@@ -1,437 +1,437 @@
 package handlers
 
 import (
-	"bytes"
-	"database/sql"
-	"encoding/json"
-	"fmt"
-	"log"
-	"net/http"
-	"strconv"
+        "bytes"
+        "database/sql"
+        "encoding/json"
+        "fmt"
+        "log"
+        "net/http"
+        "strconv"
 
-	"github.com/gin-gonic/gin"
-	"reselling-app/backend/db"
-	"reselling-app/backend/models"
+        "github.com/gin-gonic/gin"
+        "reselling-app/db"
+        "reselling-app/models"
 )
 
 // GetAllBooks returns all book listings
 func GetAllBooks(c *gin.Context) {
-	// Get query parameters for filtering
-	genre := c.Query("genre")
-	minPrice := c.Query("min_price")
-	maxPrice := c.Query("max_price")
-	query := c.Query("search")
+        // Get query parameters for filtering
+        genre := c.Query("genre")
+        minPrice := c.Query("min_price")
+        maxPrice := c.Query("max_price")
+        query := c.Query("search")
 
-	// Build SQL query with optional filters
-	sqlQuery := `
-		SELECT b.id, b.seller_id, u.username, b.title, b.author, b.description, 
-		       b.price, b.image_url, b.genre, b.condition, b.status, b.created_at
-		FROM books b
-		JOIN users u ON b.seller_id = u.id
-		WHERE b.status = 'available'
-	`
-	var params []interface{}
-	paramCounter := 1
+        // Build SQL query with optional filters
+        sqlQuery := `
+                SELECT b.id, b.seller_id, u.username, b.title, b.author, b.description, 
+                       b.price, b.image_url, b.genre, b.condition, b.status, b.created_at
+                FROM books b
+                JOIN users u ON b.seller_id = u.id
+                WHERE b.status = 'available'
+        `
+        var params []interface{}
+        paramCounter := 1
 
-	// Add filters if provided
-	if genre != "" {
-		sqlQuery += fmt.Sprintf(" AND b.genre = $%d", paramCounter)
-		params = append(params, genre)
-		paramCounter++
-	}
+        // Add filters if provided
+        if genre != "" {
+                sqlQuery += fmt.Sprintf(" AND b.genre = $%d", paramCounter)
+                params = append(params, genre)
+                paramCounter++
+        }
 
-	if minPrice != "" {
-		minPriceFloat, err := strconv.ParseFloat(minPrice, 64)
-		if err == nil {
-			sqlQuery += fmt.Sprintf(" AND b.price >= $%d", paramCounter)
-			params = append(params, minPriceFloat)
-			paramCounter++
-		}
-	}
+        if minPrice != "" {
+                minPriceFloat, err := strconv.ParseFloat(minPrice, 64)
+                if err == nil {
+                        sqlQuery += fmt.Sprintf(" AND b.price >= $%d", paramCounter)
+                        params = append(params, minPriceFloat)
+                        paramCounter++
+                }
+        }
 
-	if maxPrice != "" {
-		maxPriceFloat, err := strconv.ParseFloat(maxPrice, 64)
-		if err == nil {
-			sqlQuery += fmt.Sprintf(" AND b.price <= $%d", paramCounter)
-			params = append(params, maxPriceFloat)
-			paramCounter++
-		}
-	}
+        if maxPrice != "" {
+                maxPriceFloat, err := strconv.ParseFloat(maxPrice, 64)
+                if err == nil {
+                        sqlQuery += fmt.Sprintf(" AND b.price <= $%d", paramCounter)
+                        params = append(params, maxPriceFloat)
+                        paramCounter++
+                }
+        }
 
-	if query != "" {
-		sqlQuery += fmt.Sprintf(" AND (b.title ILIKE $%d OR b.author ILIKE $%d OR b.description ILIKE $%d)",
-			paramCounter, paramCounter, paramCounter)
-		params = append(params, "%"+query+"%")
-		paramCounter++
-	}
+        if query != "" {
+                sqlQuery += fmt.Sprintf(" AND (b.title ILIKE $%d OR b.author ILIKE $%d OR b.description ILIKE $%d)",
+                        paramCounter, paramCounter, paramCounter)
+                params = append(params, "%"+query+"%")
+                paramCounter++
+        }
 
-	sqlQuery += " ORDER BY b.created_at DESC"
+        sqlQuery += " ORDER BY b.created_at DESC"
 
-	// Execute query
-	rows, err := db.DB.Query(sqlQuery, params...)
-	if err != nil {
-		log.Printf("Database error fetching books: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch books"})
-		return
-	}
-	defer rows.Close()
+        // Execute query
+        rows, err := db.DB.Query(sqlQuery, params...)
+        if err != nil {
+                log.Printf("Database error fetching books: %v", err)
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch books"})
+                return
+        }
+        defer rows.Close()
 
-	// Parse results
-	var books []models.Book
-	for rows.Next() {
-		var book models.Book
-		if err := rows.Scan(
-			&book.ID, &book.SellerID, &book.SellerUsername, &book.Title, &book.Author,
-			&book.Description, &book.Price, &book.ImageURL, &book.Genre, &book.Condition,
-			&book.Status, &book.CreatedAt,
-		); err != nil {
-			log.Printf("Error scanning book row: %v", err)
-			continue
-		}
-		books = append(books, book)
-	}
+        // Parse results
+        var books []models.Book
+        for rows.Next() {
+                var book models.Book
+                if err := rows.Scan(
+                        &book.ID, &book.SellerID, &book.SellerUsername, &book.Title, &book.Author,
+                        &book.Description, &book.Price, &book.ImageURL, &book.Genre, &book.Condition,
+                        &book.Status, &book.CreatedAt,
+                ); err != nil {
+                        log.Printf("Error scanning book row: %v", err)
+                        continue
+                }
+                books = append(books, book)
+        }
 
-	if err := rows.Err(); err != nil {
-		log.Printf("Error iterating book rows: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error processing book data"})
-		return
-	}
+        if err := rows.Err(); err != nil {
+                log.Printf("Error iterating book rows: %v", err)
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "Error processing book data"})
+                return
+        }
 
-	c.JSON(http.StatusOK, books)
+        c.JSON(http.StatusOK, books)
 }
 
 // GetBook returns a specific book by ID
 func GetBook(c *gin.Context) {
-	// Get book ID from URL
-	bookID, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid book ID"})
-		return
-	}
+        // Get book ID from URL
+        bookID, err := strconv.Atoi(c.Param("id"))
+        if err != nil {
+                c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid book ID"})
+                return
+        }
 
-	// Get authenticated user ID from context, if available (not required)
-	userID, exists := c.Get("userID")
-	
-	// Query to get book details
-	var book models.Book
-	err = db.DB.QueryRow(`
-		SELECT b.id, b.seller_id, u.username, b.title, b.author, b.description, 
-		       b.price, b.image_url, b.genre, b.condition, b.status, b.created_at
-		FROM books b
-		JOIN users u ON b.seller_id = u.id
-		WHERE b.id = $1`,
-		bookID,
-	).Scan(
-		&book.ID, &book.SellerID, &book.SellerUsername, &book.Title, &book.Author,
-		&book.Description, &book.Price, &book.ImageURL, &book.Genre, &book.Condition,
-		&book.Status, &book.CreatedAt,
-	)
+        // Get authenticated user ID from context, if available (not required)
+        userID, exists := c.Get("userID")
+        
+        // Query to get book details
+        var book models.Book
+        err = db.DB.QueryRow(`
+                SELECT b.id, b.seller_id, u.username, b.title, b.author, b.description, 
+                       b.price, b.image_url, b.genre, b.condition, b.status, b.created_at
+                FROM books b
+                JOIN users u ON b.seller_id = u.id
+                WHERE b.id = $1`,
+                bookID,
+        ).Scan(
+                &book.ID, &book.SellerID, &book.SellerUsername, &book.Title, &book.Author,
+                &book.Description, &book.Price, &book.ImageURL, &book.Genre, &book.Condition,
+                &book.Status, &book.CreatedAt,
+        )
 
-	if err != nil {
-		if err == sql.ErrNoRows {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Book not found"})
-			return
-		}
-		log.Printf("Database error fetching book: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch book details"})
-		return
-	}
+        if err != nil {
+                if err == sql.ErrNoRows {
+                        c.JSON(http.StatusNotFound, gin.H{"error": "Book not found"})
+                        return
+                }
+                log.Printf("Database error fetching book: %v", err)
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch book details"})
+                return
+        }
 
-	// Record user interaction for recommendation system if user is authenticated
-	if exists {
-		// Don't block the response for this operation
-		go func(uid, bid int) {
-			_, err := db.DB.Exec(
-				"INSERT INTO user_book_interactions (user_id, book_id, interaction_type) VALUES ($1, $2, 'view')",
-				uid, bid,
-			)
-			if err != nil {
-				log.Printf("Error recording user interaction: %v", err)
-			}
-		}(userID.(int), bookID)
-	}
+        // Record user interaction for recommendation system if user is authenticated
+        if exists {
+                // Don't block the response for this operation
+                go func(uid, bid int) {
+                        _, err := db.DB.Exec(
+                                "INSERT INTO user_book_interactions (user_id, book_id, interaction_type) VALUES ($1, $2, 'view')",
+                                uid, bid,
+                        )
+                        if err != nil {
+                                log.Printf("Error recording user interaction: %v", err)
+                        }
+                }(userID.(int), bookID)
+        }
 
-	c.JSON(http.StatusOK, book)
+        c.JSON(http.StatusOK, book)
 }
 
 // AddBook creates a new book listing after checking price prediction
 func AddBook(c *gin.Context) {
-	// Get user ID from authentication
-	userID, _ := c.Get("userID")
-	userRole, _ := c.Get("userRole")
+        // Get user ID from authentication
+        userID, _ := c.Get("userID")
+        userRole, _ := c.Get("userRole")
 
-	// Verify the user is a seller
-	if userRole != "seller" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Only sellers can add books"})
-		return
-	}
+        // Verify the user is a seller
+        if userRole != "seller" {
+                c.JSON(http.StatusForbidden, gin.H{"error": "Only sellers can add books"})
+                return
+        }
 
-	// Parse input
-	var input models.BookInput
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+        // Parse input
+        var input models.BookInput
+        if err := c.ShouldBindJSON(&input); err != nil {
+                c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                return
+        }
 
-	// Call ML service to predict price
-	predictedPrice, err := getPredictedPrice(input)
-	if err != nil {
-		log.Printf("Error predicting price: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to predict book price"})
-		return
-	}
+        // Call ML service to predict price
+        predictedPrice, err := getPredictedPrice(input)
+        if err != nil {
+                log.Printf("Error predicting price: %v", err)
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to predict book price"})
+                return
+        }
 
-	// Check if seller's price is greater than predicted price
-	if input.Price > predictedPrice {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":           "Price exceeds the fair market value",
-			"predicted_price": predictedPrice,
-		})
-		return
-	}
+        // Check if seller's price is greater than predicted price
+        if input.Price > predictedPrice {
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error":           "Price exceeds the fair market value",
+                        "predicted_price": predictedPrice,
+                })
+                return
+        }
 
-	// Insert book into database
-	var bookID int
-	err = db.DB.QueryRow(`
-		INSERT INTO books (seller_id, title, author, description, price, predicted_price, image_url, genre, condition) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-		RETURNING id`,
-		userID, input.Title, input.Author, input.Description, input.Price, 
-		predictedPrice, input.ImageURL, input.Genre, input.Condition,
-	).Scan(&bookID)
+        // Insert book into database
+        var bookID int
+        err = db.DB.QueryRow(`
+                INSERT INTO books (seller_id, title, author, description, price, predicted_price, image_url, genre, condition) 
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                RETURNING id`,
+                userID, input.Title, input.Author, input.Description, input.Price, 
+                predictedPrice, input.ImageURL, input.Genre, input.Condition,
+        ).Scan(&bookID)
 
-	if err != nil {
-		log.Printf("Database error creating book: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create book listing"})
-		return
-	}
+        if err != nil {
+                log.Printf("Database error creating book: %v", err)
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create book listing"})
+                return
+        }
 
-	// Return created book
-	var book models.Book
-	err = db.DB.QueryRow(`
-		SELECT b.id, b.seller_id, u.username, b.title, b.author, b.description, 
-		       b.price, b.predicted_price, b.image_url, b.genre, b.condition, b.status, b.created_at
-		FROM books b
-		JOIN users u ON b.seller_id = u.id
-		WHERE b.id = $1`,
-		bookID,
-	).Scan(
-		&book.ID, &book.SellerID, &book.SellerUsername, &book.Title, &book.Author,
-		&book.Description, &book.Price, &book.PredictedPrice, &book.ImageURL, 
-		&book.Genre, &book.Condition, &book.Status, &book.CreatedAt,
-	)
+        // Return created book
+        var book models.Book
+        err = db.DB.QueryRow(`
+                SELECT b.id, b.seller_id, u.username, b.title, b.author, b.description, 
+                       b.price, b.predicted_price, b.image_url, b.genre, b.condition, b.status, b.created_at
+                FROM books b
+                JOIN users u ON b.seller_id = u.id
+                WHERE b.id = $1`,
+                bookID,
+        ).Scan(
+                &book.ID, &book.SellerID, &book.SellerUsername, &book.Title, &book.Author,
+                &book.Description, &book.Price, &book.PredictedPrice, &book.ImageURL, 
+                &book.Genre, &book.Condition, &book.Status, &book.CreatedAt,
+        )
 
-	if err != nil {
-		log.Printf("Error fetching created book: %v", err)
-		c.JSON(http.StatusCreated, gin.H{
-			"message": "Book created successfully",
-			"id":      bookID,
-		})
-		return
-	}
+        if err != nil {
+                log.Printf("Error fetching created book: %v", err)
+                c.JSON(http.StatusCreated, gin.H{
+                        "message": "Book created successfully",
+                        "id":      bookID,
+                })
+                return
+        }
 
-	c.JSON(http.StatusCreated, book)
+        c.JSON(http.StatusCreated, book)
 }
 
 // DeleteBook removes a book listing
 func DeleteBook(c *gin.Context) {
-	// Get user ID from authentication
-	userID, _ := c.Get("userID")
+        // Get user ID from authentication
+        userID, _ := c.Get("userID")
 
-	// Get book ID from URL
-	bookID, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid book ID"})
-		return
-	}
+        // Get book ID from URL
+        bookID, err := strconv.Atoi(c.Param("id"))
+        if err != nil {
+                c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid book ID"})
+                return
+        }
 
-	// Verify the user is the seller of this book
-	var sellerID int
-	err = db.DB.QueryRow("SELECT seller_id FROM books WHERE id = $1", bookID).Scan(&sellerID)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Book not found"})
-			return
-		}
-		log.Printf("Database error checking book ownership: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
-		return
-	}
+        // Verify the user is the seller of this book
+        var sellerID int
+        err = db.DB.QueryRow("SELECT seller_id FROM books WHERE id = $1", bookID).Scan(&sellerID)
+        if err != nil {
+                if err == sql.ErrNoRows {
+                        c.JSON(http.StatusNotFound, gin.H{"error": "Book not found"})
+                        return
+                }
+                log.Printf("Database error checking book ownership: %v", err)
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+                return
+        }
 
-	if sellerID != userID.(int) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "You can only delete your own book listings"})
-		return
-	}
+        if sellerID != userID.(int) {
+                c.JSON(http.StatusForbidden, gin.H{"error": "You can only delete your own book listings"})
+                return
+        }
 
-	// Delete the book
-	_, err = db.DB.Exec("DELETE FROM books WHERE id = $1", bookID)
-	if err != nil {
-		log.Printf("Database error deleting book: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete book"})
-		return
-	}
+        // Delete the book
+        _, err = db.DB.Exec("DELETE FROM books WHERE id = $1", bookID)
+        if err != nil {
+                log.Printf("Database error deleting book: %v", err)
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete book"})
+                return
+        }
 
-	c.JSON(http.StatusOK, gin.H{"message": "Book successfully deleted"})
+        c.JSON(http.StatusOK, gin.H{"message": "Book successfully deleted"})
 }
 
 // GetRecommendedBooks returns book recommendations for the user
 func GetRecommendedBooks(c *gin.Context) {
-	userID, _ := c.Get("userID")
+        userID, _ := c.Get("userID")
 
-	// Call recommender service to get book recommendations
-	recommendations, err := getRecommendations(userID.(int))
-	if err != nil {
-		log.Printf("Error getting recommendations: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get recommendations"})
-		return
-	}
+        // Call recommender service to get book recommendations
+        recommendations, err := getRecommendations(userID.(int))
+        if err != nil {
+                log.Printf("Error getting recommendations: %v", err)
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get recommendations"})
+                return
+        }
 
-	c.JSON(http.StatusOK, recommendations)
+        c.JSON(http.StatusOK, recommendations)
 }
 
 // ChatbotResponse handles book search queries via the chatbot
 func ChatbotResponse(c *gin.Context) {
-	var query models.ChatbotQuery
-	if err := c.ShouldBindJSON(&query); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+        var query models.ChatbotQuery
+        if err := c.ShouldBindJSON(&query); err != nil {
+                c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                return
+        }
 
-	// Simple keyword-based search for the chatbot
-	rows, err := db.DB.Query(`
-		SELECT b.id, b.seller_id, u.username, b.title, b.author, b.description, 
-		       b.price, b.image_url, b.genre, b.condition, b.status, b.created_at
-		FROM books b
-		JOIN users u ON b.seller_id = u.id
-		WHERE b.status = 'available' AND 
-		      (b.title ILIKE $1 OR b.author ILIKE $1 OR b.genre ILIKE $1 OR b.description ILIKE $1)
-		LIMIT 5`,
-		"%"+query.Query+"%",
-	)
-	
-	if err != nil {
-		log.Printf("Database error in chatbot search: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to search books"})
-		return
-	}
-	defer rows.Close()
+        // Simple keyword-based search for the chatbot
+        rows, err := db.DB.Query(`
+                SELECT b.id, b.seller_id, u.username, b.title, b.author, b.description, 
+                       b.price, b.image_url, b.genre, b.condition, b.status, b.created_at
+                FROM books b
+                JOIN users u ON b.seller_id = u.id
+                WHERE b.status = 'available' AND 
+                      (b.title ILIKE $1 OR b.author ILIKE $1 OR b.genre ILIKE $1 OR b.description ILIKE $1)
+                LIMIT 5`,
+                "%"+query.Query+"%",
+        )
+        
+        if err != nil {
+                log.Printf("Database error in chatbot search: %v", err)
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to search books"})
+                return
+        }
+        defer rows.Close()
 
-	// Parse results
-	var books []models.Book
-	for rows.Next() {
-		var book models.Book
-		if err := rows.Scan(
-			&book.ID, &book.SellerID, &book.SellerUsername, &book.Title, &book.Author,
-			&book.Description, &book.Price, &book.ImageURL, &book.Genre, &book.Condition,
-			&book.Status, &book.CreatedAt,
-		); err != nil {
-			log.Printf("Error scanning book row in chatbot: %v", err)
-			continue
-		}
-		books = append(books, book)
-	}
+        // Parse results
+        var books []models.Book
+        for rows.Next() {
+                var book models.Book
+                if err := rows.Scan(
+                        &book.ID, &book.SellerID, &book.SellerUsername, &book.Title, &book.Author,
+                        &book.Description, &book.Price, &book.ImageURL, &book.Genre, &book.Condition,
+                        &book.Status, &book.CreatedAt,
+                ); err != nil {
+                        log.Printf("Error scanning book row in chatbot: %v", err)
+                        continue
+                }
+                books = append(books, book)
+        }
 
-	response := "I found these books that might interest you:"
-	if len(books) == 0 {
-		response = "I couldn't find any books matching your query. Try different keywords or check all available books."
-	}
+        response := "I found these books that might interest you:"
+        if len(books) == 0 {
+                response = "I couldn't find any books matching your query. Try different keywords or check all available books."
+        }
 
-	c.JSON(http.StatusOK, models.ChatbotResponse{
-		Response: response,
-		Books:    books,
-	})
+        c.JSON(http.StatusOK, models.ChatbotResponse{
+                Response: response,
+                Books:    books,
+        })
 }
 
 // Helper function to predict book price using ML service
 func getPredictedPrice(book models.BookInput) (float64, error) {
-	// Prepare request to ML service
-	requestData := models.PredictPriceRequest{
-		Title:     book.Title,
-		Author:    book.Author,
-		Genre:     book.Genre,
-		Condition: book.Condition,
-	}
-	
-	requestJSON, err := json.Marshal(requestData)
-	if err != nil {
-		return 0, err
-	}
+        // Prepare request to ML service
+        requestData := models.PredictPriceRequest{
+                Title:     book.Title,
+                Author:    book.Author,
+                Genre:     book.Genre,
+                Condition: book.Condition,
+        }
+        
+        requestJSON, err := json.Marshal(requestData)
+        if err != nil {
+                return 0, err
+        }
 
-	// Call ML service
-	resp, err := http.Post("http://localhost:5001/predict-price", "application/json", bytes.NewBuffer(requestJSON))
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
+        // Call ML service
+        resp, err := http.Post("http://localhost:5001/predict-price", "application/json", bytes.NewBuffer(requestJSON))
+        if err != nil {
+                return 0, err
+        }
+        defer resp.Body.Close()
 
-	// Parse response
-	var prediction models.PredictPriceResponse
-	if err := json.NewDecoder(resp.Body).Decode(&prediction); err != nil {
-		return 0, err
-	}
+        // Parse response
+        var prediction models.PredictPriceResponse
+        if err := json.NewDecoder(resp.Body).Decode(&prediction); err != nil {
+                return 0, err
+        }
 
-	return prediction.PredictedPrice, nil
+        return prediction.PredictedPrice, nil
 }
 
 // Helper function to get book recommendations
 func getRecommendations(userID int) ([]models.Book, error) {
-	// Prepare request to recommender service
-	requestData := models.RecommendationRequest{
-		UserID: userID,
-	}
-	
-	requestJSON, err := json.Marshal(requestData)
-	if err != nil {
-		return nil, err
-	}
+        // Prepare request to recommender service
+        requestData := models.RecommendationRequest{
+                UserID: userID,
+        }
+        
+        requestJSON, err := json.Marshal(requestData)
+        if err != nil {
+                return nil, err
+        }
 
-	// Call recommender service
-	resp, err := http.Post("http://localhost:5001/recommend", "application/json", bytes.NewBuffer(requestJSON))
-	if err != nil {
-		// Fallback to database query for top books if service is unavailable
-		return getFallbackRecommendations()
-	}
-	defer resp.Body.Close()
+        // Call recommender service
+        resp, err := http.Post("http://localhost:5001/recommend", "application/json", bytes.NewBuffer(requestJSON))
+        if err != nil {
+                // Fallback to database query for top books if service is unavailable
+                return getFallbackRecommendations()
+        }
+        defer resp.Body.Close()
 
-	// Parse response
-	var recommendations []models.Book
-	if err := json.NewDecoder(resp.Body).Decode(&recommendations); err != nil {
-		return getFallbackRecommendations()
-	}
+        // Parse response
+        var recommendations []models.Book
+        if err := json.NewDecoder(resp.Body).Decode(&recommendations); err != nil {
+                return getFallbackRecommendations()
+        }
 
-	return recommendations, nil
+        return recommendations, nil
 }
 
 // Fallback recommendation method if ML service is unavailable
 func getFallbackRecommendations() ([]models.Book, error) {
-	rows, err := db.DB.Query(`
-		SELECT b.id, b.seller_id, u.username, b.title, b.author, b.description, 
-		       b.price, b.image_url, b.genre, b.condition, b.status, b.created_at
-		FROM books b
-		JOIN users u ON b.seller_id = u.id
-		WHERE b.status = 'available'
-		ORDER BY b.created_at DESC
-		LIMIT 5`,
-	)
-	
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+        rows, err := db.DB.Query(`
+                SELECT b.id, b.seller_id, u.username, b.title, b.author, b.description, 
+                       b.price, b.image_url, b.genre, b.condition, b.status, b.created_at
+                FROM books b
+                JOIN users u ON b.seller_id = u.id
+                WHERE b.status = 'available'
+                ORDER BY b.created_at DESC
+                LIMIT 5`,
+        )
+        
+        if err != nil {
+                return nil, err
+        }
+        defer rows.Close()
 
-	var books []models.Book
-	for rows.Next() {
-		var book models.Book
-		if err := rows.Scan(
-			&book.ID, &book.SellerID, &book.SellerUsername, &book.Title, &book.Author,
-			&book.Description, &book.Price, &book.ImageURL, &book.Genre, &book.Condition,
-			&book.Status, &book.CreatedAt,
-		); err != nil {
-			log.Printf("Error scanning book row: %v", err)
-			continue
-		}
-		books = append(books, book)
-	}
+        var books []models.Book
+        for rows.Next() {
+                var book models.Book
+                if err := rows.Scan(
+                        &book.ID, &book.SellerID, &book.SellerUsername, &book.Title, &book.Author,
+                        &book.Description, &book.Price, &book.ImageURL, &book.Genre, &book.Condition,
+                        &book.Status, &book.CreatedAt,
+                ); err != nil {
+                        log.Printf("Error scanning book row: %v", err)
+                        continue
+                }
+                books = append(books, book)
+        }
 
-	return books, nil
+        return books, nil
 }

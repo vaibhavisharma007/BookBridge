@@ -192,7 +192,7 @@ function loadChat(chatId, bookId, bookTitle) {
     if (chatInputContainer) chatInputContainer.style.display = 'flex';
     
     // Load chat messages
-    fetch(`/api/chats/${chatId}/messages`, {
+    fetch(`/api/chats/${chatId}`, {
         headers: getAuthHeaders()
     })
     .then(response => {
@@ -259,7 +259,31 @@ function connectToWebSocket(chatId) {
     
     // Determine WebSocket protocol (wss for HTTPS, ws for HTTP)
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/chat/${chatId}`;
+    // If it's a new chat (chatId = 0), we need to include the book ID
+    let wsUrl;
+    if (chatId === 0) {
+        // Get the book ID from URL parameters or some other storage
+        const urlParams = new URLSearchParams(window.location.search);
+        const bookId = urlParams.get('book_id');
+        const sellerId = urlParams.get('seller_id');
+        if (!bookId) {
+            console.error('No book ID available for new chat');
+            return;
+        }
+        // For starting a new chat, we need both book ID and seller ID
+        wsUrl = `${protocol}//${window.location.host}/ws/chat/${bookId}`;
+        if (sellerId) {
+            // If we're a seller, we'll need the buyer ID, which will be handled by the backend
+            // But if we're a buyer starting a chat with a seller, we add the seller ID
+            const user = getUserData();
+            if (user.role === 'buyer') {
+                wsUrl += `?seller_id=${sellerId}`;
+            }
+        }
+    } else {
+        // For existing chats, we can use the chat ID directly since the server knows which book it's for
+        wsUrl = `${protocol}//${window.location.host}/ws/chat/${chatId}`;
+    }
     
     // Create new WebSocket connection
     socket = new WebSocket(wsUrl);
@@ -409,6 +433,13 @@ function startNewChat(bookId, sellerId) {
             })
             .then(response => response.json())
             .then(book => {
+                // Store book ID and seller ID for WebSocket connection
+                // Set them in URL parameters so that the connectToWebSocket function can use them
+                const currentUrl = new URL(window.location.href);
+                currentUrl.searchParams.set('book_id', bookId);
+                currentUrl.searchParams.set('seller_id', sellerId);
+                window.history.replaceState({}, '', currentUrl);
+                
                 // Connect to WebSocket which will create the chat
                 connectToWebSocket(0); // A temporary chatId, the server will create the real one
                 

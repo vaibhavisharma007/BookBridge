@@ -1,8 +1,8 @@
-modules = ["golang", "go-1.22"]
+modules = ["golang", "go-1.22", "python-3.11"]
 
 [nix]
 channel = "stable-24_05"
-packages = ["go"]
+packages = ["glibcLocales", "go"]
 
 [workflows]
 runButton = "Project"
@@ -16,14 +16,35 @@ author = "agent"
 task = "workflow.run"
 args = "Backend Server"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "ML Service"
+
 [[workflows.workflow]]
 name = "Backend Server"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd backend && go mod init reselling-app && go mod tidy && go get github.com/gin-gonic/gin github.com/gin-contrib/cors github.com/gorilla/websocket github.com/lib/pq github.com/golang-jwt/jwt/v4 golang.org/x/crypto/bcrypt && go run main.go"
+args = "cd backend && go mod tidy && go get github.com/gin-gonic/gin github.com/gin-contrib/cors github.com/gorilla/websocket github.com/lib/pq github.com/golang-jwt/jwt/v4 golang.org/x/crypto/bcrypt && go run main.go"
 waitForPort = 8000
 
+[[workflows.workflow]]
+name = "ML Service"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd ml && python ml_service.py"
+waitForPort = 5001
+
 [deployment]
-run = ["sh", "-c", "cd backend && go mod init reselling-app && go mod tidy && go get github.com/gin-gonic/gin github.com/gin-contrib/cors github.com/gorilla/websocket github.com/lib/pq github.com/golang-jwt/jwt/v4 golang.org/x/crypto/bcrypt && go run main.go"]
+run = ["sh", "-c", "cd backend && go mod tidy && go get github.com/gin-gonic/gin github.com/gin-contrib/cors github.com/gorilla/websocket github.com/lib/pq github.com/golang-jwt/jwt/v4 golang.org/x/crypto/bcrypt && go run main.go"]
+
+[[ports]]
+localPort = 5001
+externalPort = 3000
+
+[[ports]]
+localPort = 8000
+externalPort = 80
