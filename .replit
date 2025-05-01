@@ -1,0 +1,29 @@
+modules = ["golang", "go-1.22"]
+
+[nix]
+channel = "stable-24_05"
+packages = ["go"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Backend Server"
+
+[[workflows.workflow]]
+name = "Backend Server"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd backend && go mod init reselling-app && go mod tidy && go get github.com/gin-gonic/gin github.com/gin-contrib/cors github.com/gorilla/websocket github.com/lib/pq github.com/golang-jwt/jwt/v4 golang.org/x/crypto/bcrypt && go run main.go"
+waitForPort = 8000
+
+[deployment]
+run = ["sh", "-c", "cd backend && go mod init reselling-app && go mod tidy && go get github.com/gin-gonic/gin github.com/gin-contrib/cors github.com/gorilla/websocket github.com/lib/pq github.com/golang-jwt/jwt/v4 golang.org/x/crypto/bcrypt && go run main.go"]

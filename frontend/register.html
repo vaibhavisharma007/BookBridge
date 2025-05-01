@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - BookResell</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="index.html">BookResell</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="index.html">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="login.html">Login</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card shadow">
+                    <div class="card-body p-5">
+                        <h2 class="card-title text-center mb-4">Create an Account</h2>
+                        
+                        <div class="alert alert-danger" id="error-message" style="display: none;"></div>
+                        <div class="alert alert-success" id="success-message" style="display: none;"></div>
+                        
+                        <form id="register-form">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Username</label>
+                                <input type="text" class="form-control" id="username" name="username" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email" name="email" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="password" name="password" required minlength="8">
+                                <div class="form-text">Password must be at least 8 characters long.</div>
+                            </div>
+                            <div class="mb-4">
+                                <label class="form-label">I want to:</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="role" id="buyer-role" value="buyer" checked>
+                                    <label class="form-check-label" for="buyer-role">
+                                        Buy books
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="role" id="seller-role" value="seller">
+                                    <label class="form-check-label" for="seller-role">
+                                        Sell books
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg">Create Account</button>
+                            </div>
+                        </form>
+                        
+                        <div class="text-center mt-4">
+                            <p>Already have an account? <a href="login.html">Login here</a></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer mt-auto py-3 bg-light">
+        <div class="container text-center">
+            <span class="text-muted">© 2023 BookResell - A marketplace for pre-loved books</span>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <script src="js/auth.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize Feather icons
+            feather.replace();
+            
+            // Check if user is already logged in
+            if (isAuthenticated()) {
+                window.location.href = 'index.html';
+                return;
+            }
+            
+            // Check URL for role parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            const roleParam = urlParams.get('role');
+            
+            if (roleParam === 'buyer') {
+                document.getElementById('buyer-role').checked = true;
+            } else if (roleParam === 'seller') {
+                document.getElementById('seller-role').checked = true;
+            }
+            
+            // Handle registration form submission
+            const registerForm = document.getElementById('register-form');
+            const errorMessage = document.getElementById('error-message');
+            const successMessage = document.getElementById('success-message');
+            
+            registerForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const username = document.getElementById('username').value;
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                const role = document.querySelector('input[name="role"]:checked').value;
+                
+                // Hide messages
+                errorMessage.style.display = 'none';
+                successMessage.style.display = 'none';
+                
+                // Validate password length
+                if (password.length < 8) {
+                    errorMessage.textContent = 'Password must be at least 8 characters long.';
+                    errorMessage.style.display = 'block';
+                    return;
+                }
+                
+                // Call registration API
+                fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, email, password, role })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        errorMessage.textContent = data.error;
+                        errorMessage.style.display = 'block';
+                    } else {
+                        // Store user data and token
+                        localStorage.setItem('token', data.token);
+                        localStorage.setItem('user', JSON.stringify({
+                            id: data.id,
+                            username: data.username,
+                            email: data.email,
+                            role: data.role
+                        }));
+                        
+                        successMessage.textContent = 'Registration successful! Redirecting...';
+                        successMessage.style.display = 'block';
+                        
+                        // Redirect based on role
+                        setTimeout(function() {
+                            if (data.role === 'seller') {
+                                window.location.href = 'seller-dashboard.html';
+                            } else {
+                                window.location.href = 'index.html';
+                            }
+                        }, 1500);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    errorMessage.textContent = 'An error occurred. Please try again.';
+                    errorMessage.style.display = 'block';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

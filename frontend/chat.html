@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messages - BookResell</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="index.html">BookResell</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav me-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="index.html">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" id="nav-books">Books</a>
+                        </li>
+                        <li class="nav-item seller-only" style="display: none">
+                            <a class="nav-link" href="seller-dashboard.html">Seller Dashboard</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="chat.html">Messages</a>
+                        </li>
+                    </ul>
+                    <div class="d-flex align-items-center">
+                        <span class="navbar-text me-3" id="username-display"></span>
+                        <button class="btn btn-light" id="logout-btn">Logout</button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container py-4">
+        <h1 class="mb-4">Messages</h1>
+        
+        <div class="row">
+            <!-- Chat List -->
+            <div class="col-md-4 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Conversations</h5>
+                    </div>
+                    <div class="list-group list-group-flush" id="chat-list">
+                        <div class="text-center py-3" id="chats-loading">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                        <div class="list-group-item text-center py-3" id="no-chats-message" style="display: none;">
+                            <p class="mb-0">No conversations yet</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Chat Window -->
+            <div class="col-md-8">
+                <div class="card" id="chat-container">
+                    <div class="card-header d-flex justify-content-between align-items-center" id="chat-header">
+                        <h5 class="mb-0">Select a conversation</h5>
+                        <a href="#" id="view-book-link" style="display: none;">View Book</a>
+                    </div>
+                    
+                    <div class="card-body chat-body" id="chat-messages">
+                        <div class="text-center py-5" id="select-chat-message">
+                            <i data-feather="message-circle" class="mb-3" style="width: 48px; height: 48px;"></i>
+                            <p>Select a conversation to start chatting</p>
+                        </div>
+                        
+                        <div class="text-center py-5" id="chat-loading" style="display: none;">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading messages...</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-footer" id="chat-input-container" style="display: none;">
+                        <form id="message-form" class="d-flex">
+                            <input type="text" class="form-control me-2" id="message-input" placeholder="Type your message...">
+                            <button type="submit" class="btn btn-primary">
+                                <i data-feather="send"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer mt-auto py-3 bg-light">
+        <div class="container text-center">
+            <span class="text-muted">© 2023 BookResell - A marketplace for pre-loved books</span>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/chat.js"></script>
+</body>
+</html>
