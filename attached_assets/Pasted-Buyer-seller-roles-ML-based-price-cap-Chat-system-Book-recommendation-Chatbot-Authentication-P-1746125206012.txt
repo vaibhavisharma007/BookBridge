@@ -1,0 +1,99 @@
+Buyer/seller roles
+
+ML-based price cap
+
+Chat system
+
+Book recommendation
+
+Chatbot
+
+Authentication
+
+PostgreSQL + Go backend
+
+Optional frontend integration
+
+✅ 🔥 Super Detailed Full-Stack Prompt for Replit (Use this directly):
+markdown
+Copy
+Edit
+Build a full-stack book reselling web app.
+
+## 🔧 Tech Stack:
+- Backend: Golang (Gin or net/http), PostgreSQL
+- Frontend: HTML/CSS/JS (or optionally React if desired)
+- ML: Python script or API for price prediction and book recommendation
+- Chat system: WebSocket or polling-based text chat between buyer and seller
+- Chatbot: Helps user search for books
+- Auth: JWT-based login/signup with user roles
+
+## 🧠 Features to Implement:
+
+1. **Authentication System**
+   - Signup/Login API
+   - JWT-based session tokens
+   - Role field: `buyer` or `seller`
+   - Password hashing
+
+2. **Book Management**
+   - `/add-book` (POST): Seller adds book (title, author, image, price)
+   - **Price cannot exceed ML predicted price**
+   - `/books` (GET): All books
+   - `/get-book?id=`: Fetch one
+   - `/delete-book?id=`: Seller deletes
+   - Store images as links or base64 (simplified)
+
+3. **ML Integration**
+   - Call Python-based ML model to predict book price
+   - Book cannot be uploaded if seller price > predicted
+   - Model trained from Kaggle dataset
+
+4. **Recommendation System**
+   - User sees recommended books (based on search/view history or genre)
+   - Python recommender code already exists and should be integrated
+
+5. **Chatbot**
+   - Basic chatbot suggests books based on keywords (e.g., "science fiction")
+   - Simple intent-based or API hook
+
+6. **Buyer-Seller Messaging**
+   - Messaging/chat system between buyer and seller on a book listing
+   - Can use WebSocket or long-polling for real-time messages
+
+7. **Frontend (optional)**
+   - Book listing UI (public)
+   - Login/Signup UI
+   - Upload form for sellers
+   - Chat UI
+
+## 🗂 Folder Structure:
+
+/backend ├── main.go ├── db.go ├── handlers/ ├── models/ ├── routes/ ├── utils/ └── middleware/
+
+/ml ├── recommender.py ├── price_predictor.py
+
+/frontend (optional) ├── index.html ├── login.html ├── upload.html └── chat.html
+
+markdown
+Copy
+Edit
+
+## 🌱 Add Comments and TODOs for:
+- Protecting routes (middleware)
+- Calling ML prediction when uploading
+- JWT auth for all protected routes
+- Later image upload via cloud (e.g., Cloudinary)
+- Realtime chat improvement
+
+Only return practical, working code and not boilerplate comments. Use realistic values and keep things modular.
+📌 What This Prompt Helps You Get:
+Actual base project scaffold with everything in place
+
+Starter Go server with routes and DB
+
+Hooks for ML + chat + chatbot
+
+Practical auth flow
+
+Ready for frontend later
