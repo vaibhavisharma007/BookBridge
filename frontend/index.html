@@ -150,23 +150,47 @@
                             <label for="genre-filter" class="form-label">Genre</label>
                             <select class="form-select" id="genre-filter">
                                 <option value="">All Genres</option>
-                                <option value="Fiction">Fiction</option>
-                                <option value="Mystery">Mystery</option>
-                                <option value="Science Fiction">Science Fiction</option>
-                                <option value="Fantasy">Fantasy</option>
-                                <option value="Biography">Biography</option>
-                                <option value="History">History</option>
-                                <option value="Romance">Romance</option>
-                                <option value="Thriller">Thriller</option>
-                                <option value="Self-help">Self-help</option>
+                                <optgroup label="Fiction Categories">
+                                    <option value="Fiction">Fiction</option>
+                                    <option value="Mystery">Mystery</option>
+                                    <option value="Science Fiction">Science Fiction</option>
+                                    <option value="Fantasy">Fantasy</option>
+                                    <option value="Biography">Biography</option>
+                                    <option value="History">History</option>
+                                    <option value="Romance">Romance</option>
+                                    <option value="Thriller">Thriller</option>
+                                    <option value="Self-help">Self-help</option>
+                                </optgroup>
+                                <optgroup label="Educational Subjects">
+                                    <option value="Mathematics">Mathematics</option>
+                                    <option value="Physics">Physics</option>
+                                    <option value="Chemistry">Chemistry</option>
+                                    <option value="Biology">Biology</option>
+                                    <option value="English Literature">English Literature</option>
+                                    <option value="Computer Science">Computer Science</option>
+                                    <option value="History">History</option>
+                                    <option value="Geography">Geography</option>
+                                    <option value="Economics">Economics</option>
+                                    <option value="Linguistics">Linguistics</option>
+                                    <option value="Psychology">Psychology</option>
+                                    <option value="Sociology">Sociology</option>
+                                    <option value="Political Science">Political Science</option>
+                                    <option value="Philosophy">Philosophy</option>
+                                    <option value="Engineering">Engineering</option>
+                                    <option value="Medicine">Medicine</option>
+                                    <option value="Law">Law</option>
+                                    <option value="Architecture">Architecture</option>
+                                    <option value="Business">Business</option>
+                                    <option value="Accountancy">Accountancy</option>
+                                </optgroup>
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label for="min-price" class="form-label">Min Price ($)</label>
+                            <label for="min-price" class="form-label">Min Price (₹)</label>
                             <input type="number" class="form-control" id="min-price" min="0">
                         </div>
                         <div class="col-md-3">
-                            <label for="max-price" class="form-label">Max Price ($)</label>
+                            <label for="max-price" class="form-label">Max Price (₹)</label>
                             <input type="number" class="form-control" id="max-price" min="0">
                         </div>
                         <div class="col-md-3 d-flex align-items-end">
@@ -253,7 +277,7 @@
                                 bookElem.innerHTML = `
                                     <h6>${book.title}</h6>
                                     <p class="mb-1">${book.author}</p>
-                                    <p class="price">$${book.price.toFixed(2)}</p>
+                                    <p class="price">₹${book.price.toFixed(2)}</p>
                                     <a href="book-detail.html?id=${book.id}" class="btn btn-sm btn-outline-primary">View Book</a>
                                 `;
                                 booksHtml.appendChild(bookElem);
