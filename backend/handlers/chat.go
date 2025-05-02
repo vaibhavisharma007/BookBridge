@@ -51,12 +51,16 @@ func HandleChatConnection(w http.ResponseWriter, r *http.Request, bookIDStr stri
                 }
         }
 
+        // Log headers for debugging
+        log.Printf("Incoming WebSocket connection with headers: %v", r.Header)
+        
         // Upgrade the HTTP connection to a WebSocket connection
         conn, err := upgrader.Upgrade(w, r, nil)
         if err != nil {
                 log.Printf("Failed to upgrade to websocket: %v", err)
                 return
         }
+        log.Printf("Successfully upgraded to WebSocket connection")
         defer conn.Close()
 
         // If not authenticated via header, wait for auth message
@@ -82,19 +86,34 @@ func HandleChatConnection(w http.ResponseWriter, r *http.Request, bookIDStr stri
                         Token string `json:"token"`
                 }
 
-                if err := json.Unmarshal(message, &authMessage); err != nil || authMessage.Type != "auth" {
-                        conn.WriteJSON(map[string]interface{}{"type": "error", "content": "Invalid authentication message"})
+                if err := json.Unmarshal(message, &authMessage); err != nil {
+                        log.Printf("WebSocket auth message parsing error: %v, message: %s", err, string(message))
+                        conn.WriteJSON(map[string]interface{}{"type": "error", "content": "Invalid authentication message format"})
                         conn.Close()
                         return
                 }
-
+                
+                // Check message type
+                if authMessage.Type != "auth" {
+                        log.Printf("WebSocket received non-auth message as first message: %s", authMessage.Type)
+                        conn.WriteJSON(map[string]interface{}{"type": "error", "content": "First message must be authentication"})
+                        conn.Close()
+                        return
+                }
+                
+                log.Printf("WebSocket received auth token (first 10 chars): %s...", authMessage.Token[:min(10, len(authMessage.Token))])
+                
                 // Validate token
                 validClaims, err := utils.ValidateToken(authMessage.Token)
                 if err != nil {
+                        log.Printf("WebSocket auth token validation error: %v", err)
                         conn.WriteJSON(map[string]interface{}{"type": "error", "content": "Invalid or expired token"})
                         conn.Close()
                         return
                 }
+                
+                log.Printf("WebSocket auth token validated successfully")
+                conn.WriteJSON(map[string]interface{}{"type": "connection_success", "content": "Authentication successful"})
 
                 claims = validClaims
                 userID = claims.UserID
@@ -290,6 +309,14 @@ func HandleChatConnection(w http.ResponseWriter, r *http.Request, bookIDStr stri
                         broadcastToChat(chatID, broadcastMsg)
                 }
         }
+}
+
+// min returns the minimum of two integers
+func min(a, b int) int {
+    if a < b {
+        return a
+    }
+    return b
 }
 
 // Helper function to get chat history

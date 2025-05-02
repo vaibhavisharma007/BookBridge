@@ -254,7 +254,7 @@ function connectToWebSocket(chatId) {
     }
     
     // Get the JWT token from the authentication utility
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem('token');
     if (!token) {
         console.error('No authentication token found');
         alert('You need to be logged in to use the chat feature.');
