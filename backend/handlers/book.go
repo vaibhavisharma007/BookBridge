@@ -6,8 +6,11 @@ import (
         "encoding/json"
         "fmt"
         "log"
+        "math"
         "net/http"
         "strconv"
+        "strings"
+        "time"
 
         "github.com/gin-gonic/gin"
         "reselling-app/db"
@@ -465,23 +468,89 @@ func getPredictedPrice(book models.BookInput) (float64, error) {
         
         requestJSON, err := json.Marshal(requestData)
         if err != nil {
-                return 0, err
+                return fallbackPricePrediction(book), nil
         }
 
-        // Call ML service
-        resp, err := http.Post("http://localhost:5001/predict-price", "application/json", bytes.NewBuffer(requestJSON))
+        // Call ML service with timeout
+        client := &http.Client{
+                Timeout: 3 * time.Second, // 3 second timeout
+        }
+        
+        resp, err := client.Post("http://localhost:5001/predict-price", "application/json", bytes.NewBuffer(requestJSON))
         if err != nil {
-                return 0, err
+                log.Printf("ML service error: %v. Using fallback pricing.", err)
+                return fallbackPricePrediction(book), nil
         }
         defer resp.Body.Close()
+
+        // Check response status
+        if resp.StatusCode != http.StatusOK {
+                log.Printf("ML service returned non-200 status code: %d. Using fallback pricing.", resp.StatusCode)
+                return fallbackPricePrediction(book), nil
+        }
 
         // Parse response
         var prediction models.PredictPriceResponse
         if err := json.NewDecoder(resp.Body).Decode(&prediction); err != nil {
-                return 0, err
+                log.Printf("Error decoding ML service response: %v. Using fallback pricing.", err)
+                return fallbackPricePrediction(book), nil
+        }
+
+        // Validate the predicted price
+        if prediction.PredictedPrice <= 0 {
+                log.Printf("ML service returned invalid price: %f. Using fallback pricing.", prediction.PredictedPrice)
+                return fallbackPricePrediction(book), nil
         }
 
         return prediction.PredictedPrice, nil
+}
+
+// Fallback price prediction in case ML service is unavailable
+func fallbackPricePrediction(book models.BookInput) float64 {
+        // Base price depends on genre
+        basePrice := 350.0 // Default base price
+        
+        // Check for academic books
+        if book.Genre == "Academic" || 
+           book.Genre == "Textbook" || 
+           book.Genre == "Education" || 
+           strings.Contains(strings.ToLower(book.Title), "jee") || 
+           strings.Contains(strings.ToLower(book.Title), "neet") {
+                basePrice = 650.0 // Academic books are typically more expensive
+        } else if book.Genre == "Fiction" || 
+                  book.Genre == "Novel" || 
+                  book.Genre == "Literature" {
+                basePrice = 300.0 // Fiction books might be cheaper
+        }
+        
+        // Adjust price based on condition
+        conditionFactor := 0.7 // Default condition factor
+        switch book.Condition {
+        case "New":
+                conditionFactor = 1.0
+        case "Like New":
+                conditionFactor = 0.9
+        case "Very Good":
+                conditionFactor = 0.8
+        case "Good":
+                conditionFactor = 0.7
+        case "Acceptable":
+                conditionFactor = 0.5
+        case "Poor":
+                conditionFactor = 0.3
+        }
+        
+        // Calculate adjusted price
+        adjustedPrice := basePrice * conditionFactor
+        
+        // Ensure price is within reasonable bounds
+        if adjustedPrice < 100.0 {
+                adjustedPrice = 100.0
+        } else if adjustedPrice > 2000.0 {
+                adjustedPrice = 2000.0
+        }
+        
+        return math.Round(adjustedPrice)
 }
 
 // Helper function to get book recommendations
