@@ -52,12 +52,45 @@ function loadChatSessions() {
     if (chatsLoading) chatsLoading.style.display = 'block';
     if (noChatsMessage) noChatsMessage.style.display = 'none';
     
+    // Make sure we have a valid authentication token
+    if (!isAuthenticated()) {
+        console.error('User is not authenticated');
+        if (chatsLoading) chatsLoading.style.display = 'none';
+        if (chatList) {
+            chatList.innerHTML += `
+                <div class="list-group-item text-center text-danger">
+                    Please log in to view your chats.
+                </div>
+            `;
+        }
+        return;
+    }
+    
+    // Get user data to check if user is a buyer
+    const userData = getUserData();
+    if (!userData) {
+        console.error('Cannot get user data');
+        if (chatsLoading) chatsLoading.style.display = 'none';
+        if (chatList) {
+            chatList.innerHTML += `
+                <div class="list-group-item text-center text-danger">
+                    Cannot load user data. Please try logging in again.
+                </div>
+            `;
+        }
+        return;
+    }
+    
+    // Log user role for debugging
+    console.log('User role:', userData.role);
+    
     fetch('/api/chats', {
         headers: getAuthHeaders()
     })
     .then(response => {
         if (!response.ok) {
-            throw new Error('Failed to load chats');
+            console.error('Failed to load chats with status:', response.status);
+            throw new Error(`Failed to load chats: ${response.status} ${response.statusText}`);
         }
         return response.json();
     })
@@ -69,20 +102,22 @@ function loadChatSessions() {
         if (chatsLoading) chatsLoading.style.display = 'none';
         
         // Clear the chat list (except for the loading and no-chats elements)
-        const existingItems = chatList.querySelectorAll('.chat-list-item');
-        existingItems.forEach(item => item.remove());
-        
-        if (chats.length === 0) {
-            // Show no chats message
-            if (noChatsMessage) noChatsMessage.style.display = 'block';
-            return;
+        if (chatList) {
+            const existingItems = chatList.querySelectorAll('.chat-list-item');
+            existingItems.forEach(item => item.remove());
+            
+            if (chats.length === 0) {
+                // Show no chats message
+                if (noChatsMessage) noChatsMessage.style.display = 'block';
+                return;
+            }
+            
+            // Add each chat to the list
+            chats.forEach(chat => {
+                const chatItem = createChatListItem(chat);
+                chatList.appendChild(chatItem);
+            });
         }
-        
-        // Add each chat to the list
-        chats.forEach(chat => {
-            const chatItem = createChatListItem(chat);
-            chatList.appendChild(chatItem);
-        });
     })
     .catch(error => {
         console.error('Error loading chats:', error);
@@ -90,11 +125,13 @@ function loadChatSessions() {
         if (chatsLoading) chatsLoading.style.display = 'none';
         
         // Show error message
-        chatList.innerHTML += `
-            <div class="list-group-item text-center text-danger">
-                Failed to load conversations. Please try again.
-            </div>
-        `;
+        if (chatList) {
+            chatList.innerHTML += `
+                <div class="list-group-item text-center text-danger">
+                    Failed to load conversations. Please try again.
+                </div>
+            `;
+        }
     });
 }
 
@@ -269,6 +306,16 @@ function connectToWebSocket(chatId) {
     let wsUrl;
     const urlParams = new URLSearchParams(window.location.search);
     
+    // Get user data
+    const user = getUserData();
+    if (!user) {
+        console.error('No user data available');
+        displayConnectionError('Authentication error. Please try logging in again.');
+        return;
+    }
+    
+    console.log('User role in connectToWebSocket:', user.role);
+    
     if (chatId === 0) {
         // Get the book ID from URL parameters
         const bookId = urlParams.get('book_id');
@@ -276,6 +323,13 @@ function connectToWebSocket(chatId) {
         
         if (!bookId) {
             console.error('No book ID available for new chat');
+            displayConnectionError('Could not start chat: missing book information.');
+            return;
+        }
+        
+        if (!sellerId) {
+            console.error('No seller ID available for new chat');
+            displayConnectionError('Could not start chat: missing seller information.');
             return;
         }
         
@@ -283,9 +337,13 @@ function connectToWebSocket(chatId) {
         wsUrl = `${protocol}//${window.location.host}/ws/chat/${bookId}`;
         
         // Add seller ID as query parameter for buyer-initiated chats
-        const user = getUserData();
-        if (user.role === 'buyer' && sellerId) {
+        if (user.role === 'buyer') {
             wsUrl += `?seller_id=${sellerId}`;
+            console.log('Adding seller_id parameter for buyer-initiated chat:', sellerId);
+        } else {
+            console.warn('Only buyers can initiate chats with sellers.');
+            displayConnectionError('Only buyers can initiate chats with sellers.');
+            return;
         }
         
         console.log('Connecting to WebSocket URL for new chat:', wsUrl);
@@ -294,6 +352,7 @@ function connectToWebSocket(chatId) {
         const chat = activeChats.find(c => c.chat_id === chatId);
         if (!chat || !chat.book_id) {
             console.error('Could not find book ID for chat:', chatId);
+            displayConnectionError('Could not find details for this chat.');
             return;
         }
         
@@ -301,9 +360,12 @@ function connectToWebSocket(chatId) {
         wsUrl = `${protocol}//${window.location.host}/ws/chat/${chat.book_id}`;
         
         // If we're seller, we need to specify the buyer
-        const user = getUserData();
         if (user.role === 'seller' && chat.buyer_id) {
             wsUrl += `?buyer_id=${chat.buyer_id}`;
+            console.log('Adding buyer_id parameter for seller chat:', chat.buyer_id);
+        } else if (user.role === 'buyer' && chat.seller_id) {
+            wsUrl += `?seller_id=${chat.seller_id}`;
+            console.log('Adding seller_id parameter for buyer chat:', chat.seller_id);
         }
         
         console.log('Connecting to WebSocket URL for existing chat:', wsUrl);
