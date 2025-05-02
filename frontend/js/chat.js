@@ -49,6 +49,12 @@ function loadChatSessions() {
     const chatsLoading = document.getElementById('chats-loading');
     const noChatsMessage = document.getElementById('no-chats-message');
     
+    // Make sure elements exist
+    if (!chatList) {
+        console.error('Chat list element not found');
+        return;
+    }
+    
     // Show loading indicator
     if (chatsLoading) chatsLoading.style.display = 'block';
     if (noChatsMessage) noChatsMessage.style.display = 'none';
@@ -57,13 +63,14 @@ function loadChatSessions() {
     if (!isAuthenticated()) {
         console.error('User is not authenticated');
         if (chatsLoading) chatsLoading.style.display = 'none';
-        if (chatList) {
-            chatList.innerHTML += `
-                <div class="list-group-item text-center text-danger">
-                    Please log in to view your chats.
-                </div>
-            `;
-        }
+        
+        const existingItems = chatList.querySelectorAll('.chat-list-item, .chat-error-message');
+        existingItems.forEach(item => item.remove());
+        
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'list-group-item text-center text-danger chat-error-message';
+        errorDiv.textContent = 'Please log in to view your chats.';
+        chatList.appendChild(errorDiv);
         return;
     }
     
@@ -72,13 +79,14 @@ function loadChatSessions() {
     if (!userData) {
         console.error('Cannot get user data');
         if (chatsLoading) chatsLoading.style.display = 'none';
-        if (chatList) {
-            chatList.innerHTML += `
-                <div class="list-group-item text-center text-danger">
-                    Cannot load user data. Please try logging in again.
-                </div>
-            `;
-        }
+        
+        const existingItems = chatList.querySelectorAll('.chat-list-item, .chat-error-message');
+        existingItems.forEach(item => item.remove());
+        
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'list-group-item text-center text-danger chat-error-message';
+        errorDiv.textContent = 'Cannot load user data. Please try logging in again.';
+        chatList.appendChild(errorDiv);
         return;
     }
     
@@ -102,37 +110,40 @@ function loadChatSessions() {
         // Hide loading indicator
         if (chatsLoading) chatsLoading.style.display = 'none';
         
-        // Clear the chat list (except for the loading and no-chats elements)
-        if (chatList) {
-            const existingItems = chatList.querySelectorAll('.chat-list-item');
-            existingItems.forEach(item => item.remove());
-            
-            if (chats.length === 0) {
-                // Show no chats message
-                if (noChatsMessage) noChatsMessage.style.display = 'block';
-                return;
-            }
-            
-            // Add each chat to the list
-            chats.forEach(chat => {
+        // Clear the chat list
+        const existingItems = chatList.querySelectorAll('.chat-list-item, .chat-error-message');
+        existingItems.forEach(item => item.remove());
+        
+        if (chats.length === 0) {
+            // Show no chats message
+            if (noChatsMessage) noChatsMessage.style.display = 'block';
+            return;
+        }
+        
+        // Add each chat to the list
+        chats.forEach(chat => {
+            try {
                 const chatItem = createChatListItem(chat);
                 chatList.appendChild(chatItem);
-            });
-        }
+            } catch (err) {
+                console.error('Error creating chat list item:', err, chat);
+            }
+        });
     })
     .catch(error => {
         console.error('Error loading chats:', error);
         // Hide loading indicator
         if (chatsLoading) chatsLoading.style.display = 'none';
         
+        // Clear existing items
+        const existingItems = chatList.querySelectorAll('.chat-list-item, .chat-error-message');
+        existingItems.forEach(item => item.remove());
+        
         // Show error message
-        if (chatList) {
-            chatList.innerHTML += `
-                <div class="list-group-item text-center text-danger">
-                    Failed to load conversations. Please try again.
-                </div>
-            `;
-        }
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'list-group-item text-center text-danger chat-error-message';
+        errorDiv.textContent = 'Failed to load conversations. Please try again.';
+        chatList.appendChild(errorDiv);
     });
 }
 
@@ -251,53 +262,78 @@ function loadChat(chatId, bookId, bookTitle) {
             // Clear any previous chat interface
             chatArea.innerHTML = '';
             
-            // Create the Deep Chat element
-            const deepChatElement = document.createElement('deep-chat');
-            deepChatElement.style.height = '400px';
-            deepChatElement.style.width = '100%';
-            chatArea.appendChild(deepChatElement);
-            
-            // Format the existing messages for Deep Chat
-            const formattedMessages = messages.map(message => {
-                const user = getUserData();
-                const isUser = message.sender_id === user.id;
+            try {
+                // Create and configure Deep Chat element with proper properties
+                const deepChatElement = document.createElement('deep-chat');
                 
-                return {
-                    role: isUser ? 'user' : 'assistant',
-                    text: message.content,
-                    name: isUser ? user.username : message.sender_name
-                };
-            });
-            
-            // Connect to WebSocket for real-time messages
-            connectToWebSocket(chatId);
-            
-            // Initialize Deep Chat
-            deepChatInstance = document.querySelector('deep-chat');
-            
-            // Set initial messages
-            if (formattedMessages.length > 0) {
-                deepChatInstance.messages = formattedMessages;
-            }
-            
-            // Configure Deep Chat for WebSocket communication
-            deepChatInstance.requestInterceptor = (request) => {
-                // Convert Deep Chat format to our WebSocket format
-                if (socket && socket.readyState === WebSocket.OPEN) {
-                    const message = {
-                        type: 'message',
-                        content: request.text,
-                        chat_id: currentChatId
+                // Set styles directly
+                deepChatElement.style.height = '350px';
+                deepChatElement.style.width = '100%';
+                deepChatElement.style.border = '1px solid #e9ecef';
+                deepChatElement.style.borderRadius = '0.25rem';
+                
+                // Initial empty messages array
+                deepChatElement.setAttribute('messages', '[]');
+                
+                // Add to DOM first
+                chatArea.appendChild(deepChatElement);
+                
+                // First establish WebSocket connection
+                connectToWebSocket(chatId);
+                
+                // Then set Deep Chat instance with a small delay to ensure proper initialization
+                setTimeout(() => {
+                    // Save the instance
+                    deepChatInstance = deepChatElement;
+                    
+                    // Format the existing messages for Deep Chat
+                    const formattedMessages = messages.map(message => {
+                        const user = getUserData();
+                        const isUser = message.sender_id === user.id;
+                        
+                        return {
+                            role: isUser ? 'user' : 'assistant',
+                            text: message.content,
+                            name: isUser ? user.username : message.sender_name
+                        };
+                    });
+                    
+                    // Set messages if there are any
+                    if (formattedMessages.length > 0) {
+                        try {
+                            deepChatInstance.messages = formattedMessages;
+                        } catch (err) {
+                            console.error('Error setting messages in Deep Chat:', err);
+                        }
+                    }
+                    
+                    // Configure Deep Chat for WebSocket communication
+                    deepChatInstance.requestInterceptor = (request) => {
+                        // Convert Deep Chat format to our WebSocket format
+                        if (socket && socket.readyState === WebSocket.OPEN) {
+                            const message = {
+                                type: 'message',
+                                content: request.text,
+                                chat_id: currentChatId
+                            };
+                            socket.send(JSON.stringify(message));
+                        } else {
+                            console.error('WebSocket not connected!');
+                            return { error: 'WebSocket not connected' };
+                        }
+                        
+                        // Return false to prevent default HTTP request
+                        return false;
                     };
-                    socket.send(JSON.stringify(message));
-                } else {
-                    console.error('WebSocket not connected!');
-                    return { error: 'WebSocket not connected' };
-                }
-                
-                // Return false to prevent default HTTP request
-                return false;
-            };
+                }, 100);
+            } catch (e) {
+                console.error('Error setting up Deep Chat:', e);
+                chatArea.innerHTML = `
+                    <div class="alert alert-danger">
+                        Failed to initialize chat interface. Please try refreshing the page.
+                    </div>
+                `;
+            }
         }
     })
     .catch(error => {
