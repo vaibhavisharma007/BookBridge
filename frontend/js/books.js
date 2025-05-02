@@ -162,8 +162,13 @@ function createBookCard(book) {
                     </small>
                 </p>
             </div>
-            <div class="card-footer d-grid">
-                <a href="book-detail.html?id=${book.id}" class="btn btn-outline-primary">View Details</a>
+            <div class="card-footer">
+                <div class="d-flex justify-content-between">
+                    <a href="book-detail.html?id=${book.id}" class="btn btn-outline-primary">View Details</a>
+                    <button class="btn btn-success add-to-cart-btn" data-book-id="${book.id}">
+                        <i data-feather="shopping-cart"></i>
+                    </button>
+                </div>
             </div>
         </div>
     `;

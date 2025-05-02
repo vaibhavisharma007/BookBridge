@@ -245,6 +245,22 @@
                     window.location.href = `chat.html?book_id=${book.id}&seller_id=${book.seller_id}`;
                 });
                 
+                // Set up add to cart button event
+                const addToCartButton = document.getElementById('add-to-cart');
+                if (addToCartButton) {
+                    addToCartButton.addEventListener('click', function() {
+                        addToCart({
+                            id: book.id,
+                            title: book.title,
+                            author: book.author,
+                            price: book.price,
+                            seller_id: book.seller_id,
+                            seller_username: book.seller_username,
+                            image_url: book.image_url || 'https://via.placeholder.com/300x450?text=No+Image+Available'
+                        });
+                    });
+                }
+                
                 // Fetch recommended books
                 loadRecommendedBooks();
             })
