@@ -254,7 +254,7 @@ function connectToWebSocket(chatId) {
     }
     
     // Get the JWT token
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('authToken');
     if (!token) return;
     
     // Determine WebSocket protocol (wss for HTTPS, ws for HTTP)

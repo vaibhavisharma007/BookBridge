@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - BookResell</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/profile.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">
+                <a href="/">BookResell</a>
+            </div>
+            <ul class="nav-links">
+                <li><a href="/">Home</a></li>
+                <li class="auth-required seller-only"><a href="/seller-dashboard.html">Seller Dashboard</a></li>
+                <li class="auth-required"><a href="/chat.html">Messages</a></li>
+                <li class="auth-required"><a href="/cart.html">Cart <span id="cart-count" class="cart-badge">0</span></a></li>
+                <li class="auth-required"><a href="/profile.html" class="active">My Profile</a></li>
+                <li class="auth-not-required"><a href="/login.html">Login</a></li>
+                <li class="auth-not-required"><a href="/register.html">Register</a></li>
+                <li class="auth-required"><a href="#" id="logout-btn">Logout</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <section class="profile-section">
+            <h1>My Profile</h1>
+
+            <div class="profile-container">
+                <div class="sidebar">
+                    <ul class="nav nav-tabs" id="profile-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="profile-info-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#profile-info" type="button" role="tab" 
+                                    aria-controls="profile-info" aria-selected="true">Profile Info</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="orders-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#orders" type="button" role="tab" 
+                                    aria-controls="orders" aria-selected="false">Orders</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="addresses-tab" data-bs-toggle="tab"
+                                    data-bs-target="#addresses" type="button" role="tab" 
+                                    aria-controls="addresses" aria-selected="false">Addresses</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="wishlist-tab" data-bs-toggle="tab"
+                                    data-bs-target="#wishlist" type="button" role="tab"
+                                    aria-controls="wishlist" aria-selected="false">Wishlist</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="settings-tab" data-bs-toggle="tab"
+                                    data-bs-target="#settings" type="button" role="tab"
+                                    aria-controls="settings" aria-selected="false">Settings</button>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="content">
+                    <div class="tab-content" id="profile-tab-content">
+                        <!-- Profile Information Tab -->
+                        <div class="tab-pane fade show active" id="profile-info" role="tabpanel" aria-labelledby="profile-info-tab">
+                            <h2>Profile Information</h2>
+                            <div id="profile-data">
+                                <p><strong>Loading profile data...</strong></p>
+                            </div>
+                            
+                            <div class="edit-profile-form" style="display: none;">
+                                <form id="profile-form">
+                                    <div class="form-group">
+                                        <label for="name">Full Name</label>
+                                        <input type="text" id="name" name="name" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="email">Email</label>
+                                        <input type="email" id="email" name="email" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="phone">Phone Number</label>
+                                        <input type="tel" id="phone" name="phone">
+                                    </div>
+                                    <div class="form-actions">
+                                        <button type="button" id="cancel-edit" class="secondary-button">Cancel</button>
+                                        <button type="submit" class="primary-button">Save Changes</button>
+                                    </div>
+                                </form>
+                            </div>
+                            
+                            <button id="edit-profile" class="primary-button">Edit Profile</button>
+                        </div>
+                        
+                        <!-- Orders Tab -->
+                        <div class="tab-pane fade" id="orders" role="tabpanel" aria-labelledby="orders-tab">
+                            <h2>Order History</h2>
+                            <div id="orders-list">
+                                <p><strong>Loading orders...</strong></p>
+                            </div>
+                        </div>
+                        
+                        <!-- Addresses Tab -->
+                        <div class="tab-pane fade" id="addresses" role="tabpanel" aria-labelledby="addresses-tab">
+                            <h2>Shipping Addresses</h2>
+                            <div id="addresses-list">
+                                <p><strong>Loading addresses...</strong></p>
+                            </div>
+                            
+                            <button id="add-address" class="primary-button">Add New Address</button>
+                            
+                            <div id="address-form-container" style="display: none;">
+                                <form id="address-form">
+                                    <div class="form-group">
+                                        <label for="address-name">Address Name (e.g. Home, Work)</label>
+                                        <input type="text" id="address-name" name="address-name" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="street">Street Address</label>
+                                        <input type="text" id="street" name="street" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="city">City</label>
+                                        <input type="text" id="city" name="city" required>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="state">State</label>
+                                            <input type="text" id="state" name="state" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="postal-code">Postal Code</label>
+                                            <input type="text" id="postal-code" name="postal-code" required>
+                                        </div>
+                                    </div>
+                                    <div class="form-actions">
+                                        <button type="button" id="cancel-address" class="secondary-button">Cancel</button>
+                                        <button type="submit" class="primary-button">Save Address</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                        
+                        <!-- Wishlist Tab -->
+                        <div class="tab-pane fade" id="wishlist" role="tabpanel" aria-labelledby="wishlist-tab">
+                            <h2>My Wishlist</h2>
+                            <div id="wishlist-items">
+                                <p><strong>Loading wishlist...</strong></p>
+                            </div>
+                        </div>
+                        
+                        <!-- Settings Tab -->
+                        <div class="tab-pane fade" id="settings" role="tabpanel" aria-labelledby="settings-tab">
+                            <h2>Account Settings</h2>
+                            
+                            <div class="settings-section">
+                                <h3>Change Password</h3>
+                                <form id="password-form">
+                                    <div class="form-group">
+                                        <label for="current-password">Current Password</label>
+                                        <input type="password" id="current-password" name="current-password" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="new-password">New Password</label>
+                                        <input type="password" id="new-password" name="new-password" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="confirm-password">Confirm New Password</label>
+                                        <input type="password" id="confirm-password" name="confirm-password" required>
+                                    </div>
+                                    <button type="submit" class="primary-button">Update Password</button>
+                                </form>
+                            </div>
+                            
+                            <div class="settings-section">
+                                <h3>Email Preferences</h3>
+                                <form id="email-preferences-form">
+                                    <div class="checkbox-group">
+                                        <input type="checkbox" id="order-notifications" name="order-notifications" checked>
+                                        <label for="order-notifications">Order Updates</label>
+                                    </div>
+                                    <div class="checkbox-group">
+                                        <input type="checkbox" id="chat-notifications" name="chat-notifications" checked>
+                                        <label for="chat-notifications">Chat Notifications</label>
+                                    </div>
+                                    <div class="checkbox-group">
+                                        <input type="checkbox" id="promotional-emails" name="promotional-emails">
+                                        <label for="promotional-emails">Promotional Emails</label>
+                                    </div>
+                                    <button type="submit" class="primary-button">Save Preferences</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 BookResell - All rights reserved</p>
+        </div>
+    </footer>
+
+    <script src="/js/auth.js"></script>
+    <script src="/js/cart.js"></script>
+    <script src="/js/profile.js"></script>
+</body>
+</html>
