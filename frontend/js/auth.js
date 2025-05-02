@@ -76,6 +76,12 @@ function updateAuthUI() {
             usernameDisplay.textContent = user.username;
         }
         
+        // Update other-role text for role switching
+        const otherRoleSpan = document.getElementById('other-role');
+        if (otherRoleSpan) {
+            otherRoleSpan.textContent = user.role === 'seller' ? 'Buyer' : 'Seller';
+        }
+        
         // Show/hide role-specific elements
         if (user.role === 'seller') {
             sellerOnlyElements.forEach(el => el.style.display = '');
@@ -97,6 +103,11 @@ function updateAuthUI() {
         sellerOnlyElements.forEach(el => el.style.display = 'none');
         buyerOnlyElements.forEach(el => el.style.display = 'none');
         adminOnlyElements.forEach(el => el.style.display = 'none');
+    }
+    
+    // Initialize feather icons in newly visible elements
+    if (typeof feather !== 'undefined') {
+        feather.replace();
     }
 }
 
@@ -121,6 +132,34 @@ function isTokenExpired() {
     }
 }
 
+/**
+ * Switch between buyer and seller roles
+ */
+function switchRole() {
+    const user = getUserData();
+    if (!user) return;
+    
+    // Toggle the role
+    const newRole = user.role === 'seller' ? 'buyer' : 'seller';
+    user.role = newRole;
+    
+    // Save the updated user data to localStorage
+    localStorage.setItem('user', JSON.stringify(user));
+    
+    // Update UI elements based on the new role
+    updateAuthUI();
+    
+    // Show success message
+    alert(`Successfully switched to ${newRole} role!`);
+    
+    // Reload the page or redirect to appropriate dashboard
+    if (newRole === 'seller') {
+        window.location.href = 'seller-dashboard.html';
+    } else {
+        window.location.href = 'index.html';
+    }
+}
+
 // Add event listeners when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize authentication UI
@@ -135,7 +174,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add logout event listener
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
-        logoutBtn.addEventListener('click', logout);
+        logoutBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            logout();
+        });
+    }
+    
+    // Add role switch event listener
+    const switchRoleBtn = document.getElementById('switch-role-btn');
+    if (switchRoleBtn) {
+        switchRoleBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            switchRole();
+        });
     }
     
     // Add books navigation event listener

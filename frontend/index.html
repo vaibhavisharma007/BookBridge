@@ -25,13 +25,23 @@
                             <a class="nav-link" href="#" id="nav-books">Books</a>
                         </li>
                         <li class="nav-item seller-only" style="display: none">
-                            <a class="nav-link" href="seller-dashboard.html">Seller Dashboard</a>
+                            <a class="nav-link" href="seller-dashboard.html">
+                                <i data-feather="briefcase" class="me-1"></i> Seller Dashboard
+                            </a>
                         </li>
                         <li class="nav-item authenticated" style="display: none">
-                            <a class="nav-link" href="chat.html">Messages</a>
+                            <a class="nav-link" href="chat.html">
+                                <i data-feather="message-circle" class="me-1"></i> Messages
+                                <span id="unread-message-count" class="badge bg-danger rounded-pill">0</span>
+                            </a>
+                        </li>
+                        <li class="nav-item buyer-only" style="display: none">
+                            <a class="nav-link" href="profile.html">
+                                <i data-feather="user" class="me-1"></i> My Profile
+                            </a>
                         </li>
                     </ul>
-                    <div class="d-flex">
+                    <div class="d-flex align-items-center">
                         <form class="d-flex me-2" id="search-form">
                             <input class="form-control me-2" type="search" placeholder="Search books..." id="search-input">
                             <button class="btn btn-light" type="submit">Search</button>
@@ -45,8 +55,23 @@
                             </li>
                         </ul>
                         <div class="authenticated" style="display: none">
-                            <span class="navbar-text me-2" id="username-display"></span>
-                            <button class="btn btn-light" id="logout-btn">Logout</button>
+                            <div class="dropdown">
+                                <button class="btn btn-primary dropdown-toggle" type="button" id="user-menu-btn" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <span id="username-display">User</span>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="user-menu-btn">
+                                    <li class="buyer-only" style="display: none"><a class="dropdown-item" href="profile.html"><i data-feather="user" class="me-2"></i> My Profile</a></li>
+                                    <li class="buyer-only" style="display: none"><a class="dropdown-item" href="cart.html"><i data-feather="shopping-cart" class="me-2"></i> My Cart</a></li>
+                                    <li class="buyer-only" style="display: none"><a class="dropdown-item" href="wishlist.html"><i data-feather="heart" class="me-2"></i> My Wishlist</a></li>
+                                    <li class="seller-only" style="display: none"><a class="dropdown-item" href="seller-dashboard.html"><i data-feather="briefcase" class="me-2"></i> Seller Dashboard</a></li>
+                                    <li class="seller-only" style="display: none"><a class="dropdown-item" href="seller-profile.html"><i data-feather="user" class="me-2"></i> Seller Profile</a></li>
+                                    <li><a class="dropdown-item" href="chat.html"><i data-feather="message-circle" class="me-2"></i> Messages</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" id="switch-role-btn" href="#"><i data-feather="repeat" class="me-2"></i> Switch to <span id="other-role">Seller</span></a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="#" id="logout-btn"><i data-feather="log-out" class="me-2"></i> Logout</a></li>
+                                </ul>
+                            </div>
                         </div>
                         <div class="unauthenticated">
                             <a href="login.html" class="btn btn-light me-2">Login</a>

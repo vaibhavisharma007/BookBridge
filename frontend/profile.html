@@ -4,193 +4,412 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Profile - BookResell</title>
-    <link rel="stylesheet" href="/css/styles.css">
-    <link rel="stylesheet" href="/css/profile.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/profile.css">
 </head>
 <body>
     <header>
-        <nav>
-            <div class="logo">
-                <a href="/">BookResell</a>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="index.html">BookResell</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav me-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="index.html">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" id="nav-books">Books</a>
+                        </li>
+                        <li class="nav-item seller-only" style="display: none">
+                            <a class="nav-link" href="seller-dashboard.html">
+                                <i data-feather="briefcase" class="me-1"></i> Seller Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item authenticated" style="display: none">
+                            <a class="nav-link" href="chat.html">
+                                <i data-feather="message-circle" class="me-1"></i> Messages
+                                <span id="unread-message-count" class="badge bg-danger rounded-pill">0</span>
+                            </a>
+                        </li>
+                        <li class="nav-item buyer-only" style="display: none">
+                            <a class="nav-link active" href="profile.html">
+                                <i data-feather="user" class="me-1"></i> My Profile
+                            </a>
+                        </li>
+                    </ul>
+                    <div class="d-flex align-items-center">
+                        <form class="d-flex me-2" id="search-form">
+                            <input class="form-control me-2" type="search" placeholder="Search books..." id="search-input">
+                            <button class="btn btn-light" type="submit">Search</button>
+                        </form>
+                        <ul class="navbar-nav me-2">
+                            <li class="nav-item">
+                                <a class="nav-link" href="cart.html">
+                                    <i data-feather="shopping-cart"></i>
+                                    <span id="cart-count" class="badge bg-danger rounded-pill">0</span>
+                                </a>
+                            </li>
+                        </ul>
+                        <div class="authenticated" style="display: none">
+                            <div class="dropdown">
+                                <button class="btn btn-primary dropdown-toggle" type="button" id="user-menu-btn" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <span id="username-display">User</span>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="user-menu-btn">
+                                    <li class="buyer-only" style="display: none"><a class="dropdown-item" href="profile.html"><i data-feather="user" class="me-2"></i> My Profile</a></li>
+                                    <li class="buyer-only" style="display: none"><a class="dropdown-item" href="cart.html"><i data-feather="shopping-cart" class="me-2"></i> My Cart</a></li>
+                                    <li class="buyer-only" style="display: none"><a class="dropdown-item" href="wishlist.html"><i data-feather="heart" class="me-2"></i> My Wishlist</a></li>
+                                    <li class="seller-only" style="display: none"><a class="dropdown-item" href="seller-dashboard.html"><i data-feather="briefcase" class="me-2"></i> Seller Dashboard</a></li>
+                                    <li class="seller-only" style="display: none"><a class="dropdown-item" href="seller-profile.html"><i data-feather="user" class="me-2"></i> Seller Profile</a></li>
+                                    <li><a class="dropdown-item" href="chat.html"><i data-feather="message-circle" class="me-2"></i> Messages</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" id="switch-role-btn" href="#"><i data-feather="repeat" class="me-2"></i> Switch to <span id="other-role">Seller</span></a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="#" id="logout-btn"><i data-feather="log-out" class="me-2"></i> Logout</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="unauthenticated">
+                            <a href="login.html" class="btn btn-light me-2">Login</a>
+                            <a href="register.html" class="btn btn-outline-light">Register</a>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <ul class="nav-links">
-                <li><a href="/">Home</a></li>
-                <li class="auth-required seller-only"><a href="/seller-dashboard.html">Seller Dashboard</a></li>
-                <li class="auth-required"><a href="/chat.html">Messages</a></li>
-                <li class="auth-required"><a href="/cart.html">Cart <span id="cart-count" class="cart-badge">0</span></a></li>
-                <li class="auth-required"><a href="/profile.html" class="active">My Profile</a></li>
-                <li class="auth-not-required"><a href="/login.html">Login</a></li>
-                <li class="auth-not-required"><a href="/register.html">Register</a></li>
-                <li class="auth-required"><a href="#" id="logout-btn">Logout</a></li>
-            </ul>
         </nav>
     </header>
 
-    <main class="container">
+    <main class="container py-4">
         <section class="profile-section">
-            <h1>My Profile</h1>
+            <div class="mb-4 d-flex justify-content-between align-items-center">
+                <h1 class="mb-0">My Profile</h1>
+                <div>
+                    <button id="switch-role-btn-profile" class="btn btn-outline-primary">
+                        <i data-feather="repeat" class="me-1"></i> 
+                        Switch to <span id="other-role-profile">Seller</span> Account
+                    </button>
+                </div>
+            </div>
 
-            <div class="profile-container">
-                <div class="sidebar">
-                    <ul class="nav nav-tabs" id="profile-tabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="profile-info-tab" data-bs-toggle="tab" 
-                                    data-bs-target="#profile-info" type="button" role="tab" 
-                                    aria-controls="profile-info" aria-selected="true">Profile Info</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="orders-tab" data-bs-toggle="tab" 
-                                    data-bs-target="#orders" type="button" role="tab" 
-                                    aria-controls="orders" aria-selected="false">Orders</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="addresses-tab" data-bs-toggle="tab"
-                                    data-bs-target="#addresses" type="button" role="tab" 
-                                    aria-controls="addresses" aria-selected="false">Addresses</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="wishlist-tab" data-bs-toggle="tab"
-                                    data-bs-target="#wishlist" type="button" role="tab"
-                                    aria-controls="wishlist" aria-selected="false">Wishlist</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="settings-tab" data-bs-toggle="tab"
-                                    data-bs-target="#settings" type="button" role="tab"
-                                    aria-controls="settings" aria-selected="false">Settings</button>
-                        </li>
-                    </ul>
+            <div class="row">
+                <!-- Left sidebar with profile stats -->
+                <div class="col-md-3 mb-4">
+                    <div class="card mb-4">
+                        <div class="card-body text-center">
+                            <div class="profile-avatar mb-3">
+                                <img id="profile-avatar" src="https://via.placeholder.com/150" alt="Profile Avatar" class="rounded-circle img-fluid" style="width: 120px;">
+                            </div>
+                            <h5 id="profile-name" class="card-title">Loading...</h5>
+                            <p id="profile-email" class="text-muted">loading@example.com</p>
+                            <p><span class="badge bg-primary">Buyer</span></p>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title">Account Stats</h5>
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Orders
+                                    <span id="orders-count" class="badge bg-primary rounded-pill">0</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Wishlist Items
+                                    <span id="wishlist-count" class="badge bg-primary rounded-pill">0</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Reviews
+                                    <span id="reviews-count" class="badge bg-primary rounded-pill">0</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="content">
-                    <div class="tab-content" id="profile-tab-content">
-                        <!-- Profile Information Tab -->
-                        <div class="tab-pane fade show active" id="profile-info" role="tabpanel" aria-labelledby="profile-info-tab">
-                            <h2>Profile Information</h2>
-                            <div id="profile-data">
-                                <p><strong>Loading profile data...</strong></p>
-                            </div>
-                            
-                            <div class="edit-profile-form" style="display: none;">
-                                <form id="profile-form">
-                                    <div class="form-group">
-                                        <label for="name">Full Name</label>
-                                        <input type="text" id="name" name="name" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="email">Email</label>
-                                        <input type="email" id="email" name="email" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="phone">Phone Number</label>
-                                        <input type="tel" id="phone" name="phone">
-                                    </div>
-                                    <div class="form-actions">
-                                        <button type="button" id="cancel-edit" class="secondary-button">Cancel</button>
-                                        <button type="submit" class="primary-button">Save Changes</button>
-                                    </div>
-                                </form>
-                            </div>
-                            
-                            <button id="edit-profile" class="primary-button">Edit Profile</button>
+                <!-- Main content area with tabs -->
+                <div class="col-md-9">
+                    <div class="card">
+                        <div class="card-header">
+                            <ul class="nav nav-tabs card-header-tabs" id="profile-tabs" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="profile-info-tab" data-bs-toggle="tab" 
+                                            data-bs-target="#profile-info" type="button" role="tab" 
+                                            aria-controls="profile-info" aria-selected="true">
+                                        <i data-feather="user" class="me-1"></i> Profile Info
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="orders-tab" data-bs-toggle="tab" 
+                                            data-bs-target="#orders" type="button" role="tab" 
+                                            aria-controls="orders" aria-selected="false">
+                                        <i data-feather="shopping-bag" class="me-1"></i> Orders
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="addresses-tab" data-bs-toggle="tab"
+                                            data-bs-target="#addresses" type="button" role="tab" 
+                                            aria-controls="addresses" aria-selected="false">
+                                        <i data-feather="map-pin" class="me-1"></i> Addresses
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="wishlist-tab" data-bs-toggle="tab"
+                                            data-bs-target="#wishlist" type="button" role="tab"
+                                            aria-controls="wishlist" aria-selected="false">
+                                        <i data-feather="heart" class="me-1"></i> Wishlist
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="settings-tab" data-bs-toggle="tab"
+                                            data-bs-target="#settings" type="button" role="tab"
+                                            aria-controls="settings" aria-selected="false">
+                                        <i data-feather="settings" class="me-1"></i> Settings
+                                    </button>
+                                </li>
+                            </ul>
                         </div>
-                        
-                        <!-- Orders Tab -->
-                        <div class="tab-pane fade" id="orders" role="tabpanel" aria-labelledby="orders-tab">
-                            <h2>Order History</h2>
-                            <div id="orders-list">
-                                <p><strong>Loading orders...</strong></p>
-                            </div>
-                        </div>
-                        
-                        <!-- Addresses Tab -->
-                        <div class="tab-pane fade" id="addresses" role="tabpanel" aria-labelledby="addresses-tab">
-                            <h2>Shipping Addresses</h2>
-                            <div id="addresses-list">
-                                <p><strong>Loading addresses...</strong></p>
-                            </div>
-                            
-                            <button id="add-address" class="primary-button">Add New Address</button>
-                            
-                            <div id="address-form-container" style="display: none;">
-                                <form id="address-form">
-                                    <div class="form-group">
-                                        <label for="address-name">Address Name (e.g. Home, Work)</label>
-                                        <input type="text" id="address-name" name="address-name" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="street">Street Address</label>
-                                        <input type="text" id="street" name="street" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="city">City</label>
-                                        <input type="text" id="city" name="city" required>
-                                    </div>
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label for="state">State</label>
-                                            <input type="text" id="state" name="state" required>
+
+                        <div class="card-body">
+                            <div class="tab-content" id="profile-tab-content">
+                                <!-- Profile Information Tab -->
+                                <div class="tab-pane fade show active" id="profile-info" role="tabpanel" aria-labelledby="profile-info-tab">
+                                    <h3 class="card-title">Profile Information</h3>
+                                    <p class="text-muted mb-4">Manage your personal details and preferences</p>
+                                    
+                                    <div id="profile-data" class="mb-4">
+                                        <div class="row mb-3">
+                                            <div class="col-md-3 fw-bold">Full Name:</div>
+                                            <div class="col-md-9" id="profile-full-name">Loading...</div>
                                         </div>
-                                        <div class="form-group">
-                                            <label for="postal-code">Postal Code</label>
-                                            <input type="text" id="postal-code" name="postal-code" required>
+                                        <div class="row mb-3">
+                                            <div class="col-md-3 fw-bold">Email Address:</div>
+                                            <div class="col-md-9" id="profile-email-display">Loading...</div>
+                                        </div>
+                                        <div class="row mb-3">
+                                            <div class="col-md-3 fw-bold">Phone Number:</div>
+                                            <div class="col-md-9" id="profile-phone">Loading...</div>
+                                        </div>
+                                        <div class="row mb-3">
+                                            <div class="col-md-3 fw-bold">Member Since:</div>
+                                            <div class="col-md-9" id="profile-joined-date">Loading...</div>
+                                        </div>
+                                        <div class="row mb-3">
+                                            <div class="col-md-3 fw-bold">Reading Preferences:</div>
+                                            <div class="col-md-9" id="profile-preferences">Loading...</div>
                                         </div>
                                     </div>
-                                    <div class="form-actions">
-                                        <button type="button" id="cancel-address" class="secondary-button">Cancel</button>
-                                        <button type="submit" class="primary-button">Save Address</button>
+                                    
+                                    <div class="edit-profile-form" style="display: none;">
+                                        <form id="profile-form" class="row g-3">
+                                            <div class="col-md-6">
+                                                <label for="name" class="form-label">Full Name</label>
+                                                <input type="text" class="form-control" id="name" name="name" required>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="email" class="form-label">Email</label>
+                                                <input type="email" class="form-control" id="email" name="email" required>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="phone" class="form-label">Phone Number</label>
+                                                <input type="tel" class="form-control" id="phone" name="phone">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="reading-preferences" class="form-label">Reading Preferences</label>
+                                                <select class="form-select" id="reading-preferences" name="reading-preferences" multiple>
+                                                    <option value="fiction">Fiction</option>
+                                                    <option value="non-fiction">Non-fiction</option>
+                                                    <option value="mystery">Mystery</option>
+                                                    <option value="sci-fi">Science Fiction</option>
+                                                    <option value="fantasy">Fantasy</option>
+                                                    <option value="biography">Biography</option>
+                                                    <option value="history">History</option>
+                                                    <option value="self-help">Self Help</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-12 text-end mt-4">
+                                                <button type="button" id="cancel-edit" class="btn btn-outline-secondary me-2">Cancel</button>
+                                                <button type="submit" class="btn btn-primary">Save Changes</button>
+                                            </div>
+                                        </form>
                                     </div>
-                                </form>
-                            </div>
-                        </div>
-                        
-                        <!-- Wishlist Tab -->
-                        <div class="tab-pane fade" id="wishlist" role="tabpanel" aria-labelledby="wishlist-tab">
-                            <h2>My Wishlist</h2>
-                            <div id="wishlist-items">
-                                <p><strong>Loading wishlist...</strong></p>
-                            </div>
-                        </div>
-                        
-                        <!-- Settings Tab -->
-                        <div class="tab-pane fade" id="settings" role="tabpanel" aria-labelledby="settings-tab">
-                            <h2>Account Settings</h2>
-                            
-                            <div class="settings-section">
-                                <h3>Change Password</h3>
-                                <form id="password-form">
-                                    <div class="form-group">
-                                        <label for="current-password">Current Password</label>
-                                        <input type="password" id="current-password" name="current-password" required>
+                                    
+                                    <button id="edit-profile" class="btn btn-primary">
+                                        <i data-feather="edit" class="me-1"></i> Edit Profile
+                                    </button>
+                                </div>
+                                
+                                <!-- Orders Tab -->
+                                <div class="tab-pane fade" id="orders" role="tabpanel" aria-labelledby="orders-tab">
+                                    <h3 class="card-title">Order History</h3>
+                                    <p class="text-muted mb-4">Track and manage your previous purchases</p>
+                                    
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Order ID</th>
+                                                    <th>Date</th>
+                                                    <th>Items</th>
+                                                    <th>Total</th>
+                                                    <th>Status</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="orders-list">
+                                                <tr>
+                                                    <td colspan="6" class="text-center">Loading orders...</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
                                     </div>
-                                    <div class="form-group">
-                                        <label for="new-password">New Password</label>
-                                        <input type="password" id="new-password" name="new-password" required>
+                                </div>
+                                
+                                <!-- Addresses Tab -->
+                                <div class="tab-pane fade" id="addresses" role="tabpanel" aria-labelledby="addresses-tab">
+                                    <div class="d-flex justify-content-between align-items-center mb-4">
+                                        <div>
+                                            <h3 class="card-title mb-0">Shipping Addresses</h3>
+                                            <p class="text-muted">Manage your delivery locations</p>
+                                        </div>
+                                        <button id="add-address" class="btn btn-primary">
+                                            <i data-feather="plus" class="me-1"></i> Add New Address
+                                        </button>
                                     </div>
-                                    <div class="form-group">
-                                        <label for="confirm-password">Confirm New Password</label>
-                                        <input type="password" id="confirm-password" name="confirm-password" required>
+                                    
+                                    <div id="addresses-list" class="row">
+                                        <div class="col-12 text-center">
+                                            <p><strong>Loading addresses...</strong></p>
+                                        </div>
                                     </div>
-                                    <button type="submit" class="primary-button">Update Password</button>
-                                </form>
-                            </div>
-                            
-                            <div class="settings-section">
-                                <h3>Email Preferences</h3>
-                                <form id="email-preferences-form">
-                                    <div class="checkbox-group">
-                                        <input type="checkbox" id="order-notifications" name="order-notifications" checked>
-                                        <label for="order-notifications">Order Updates</label>
+                                    
+                                    <div id="address-form-container" class="card mt-4" style="display: none;">
+                                        <div class="card-body">
+                                            <h4 class="card-title">Add New Address</h4>
+                                            <form id="address-form" class="row g-3">
+                                                <div class="col-md-6">
+                                                    <label for="address-name" class="form-label">Address Name (e.g. Home, Work)</label>
+                                                    <input type="text" class="form-control" id="address-name" name="address-name" required>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label for="recipient-name" class="form-label">Recipient Name</label>
+                                                    <input type="text" class="form-control" id="recipient-name" name="recipient-name" required>
+                                                </div>
+                                                <div class="col-12">
+                                                    <label for="street" class="form-label">Street Address</label>
+                                                    <input type="text" class="form-control" id="street" name="street" required>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label for="city" class="form-label">City</label>
+                                                    <input type="text" class="form-control" id="city" name="city" required>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label for="state" class="form-label">State</label>
+                                                    <input type="text" class="form-control" id="state" name="state" required>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label for="postal-code" class="form-label">Postal Code</label>
+                                                    <input type="text" class="form-control" id="postal-code" name="postal-code" required>
+                                                </div>
+                                                <div class="col-12">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" id="default-address">
+                                                        <label class="form-check-label" for="default-address">
+                                                            Set as default shipping address
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12 text-end mt-4">
+                                                    <button type="button" id="cancel-address" class="btn btn-outline-secondary me-2">Cancel</button>
+                                                    <button type="submit" class="btn btn-primary">Save Address</button>
+                                                </div>
+                                            </form>
+                                        </div>
                                     </div>
-                                    <div class="checkbox-group">
-                                        <input type="checkbox" id="chat-notifications" name="chat-notifications" checked>
-                                        <label for="chat-notifications">Chat Notifications</label>
+                                </div>
+                                
+                                <!-- Wishlist Tab -->
+                                <div class="tab-pane fade" id="wishlist" role="tabpanel" aria-labelledby="wishlist-tab">
+                                    <h3 class="card-title">My Wishlist</h3>
+                                    <p class="text-muted mb-4">Books you're interested in for future purchase</p>
+                                    
+                                    <div id="wishlist-items" class="row row-cols-1 row-cols-md-3 g-4">
+                                        <div class="col-12 text-center">
+                                            <p><strong>Loading wishlist...</strong></p>
+                                        </div>
                                     </div>
-                                    <div class="checkbox-group">
-                                        <input type="checkbox" id="promotional-emails" name="promotional-emails">
-                                        <label for="promotional-emails">Promotional Emails</label>
+                                </div>
+                                
+                                <!-- Settings Tab -->
+                                <div class="tab-pane fade" id="settings" role="tabpanel" aria-labelledby="settings-tab">
+                                    <h3 class="card-title">Account Settings</h3>
+                                    <p class="text-muted mb-4">Manage your account preferences and security</p>
+                                    
+                                    <div class="settings-section card mb-4">
+                                        <div class="card-body">
+                                            <h4 class="card-title">Change Password</h4>
+                                            <form id="password-form" class="row g-3">
+                                                <div class="col-md-12">
+                                                    <label for="current-password" class="form-label">Current Password</label>
+                                                    <input type="password" class="form-control" id="current-password" name="current-password" required>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label for="new-password" class="form-label">New Password</label>
+                                                    <input type="password" class="form-control" id="new-password" name="new-password" required>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label for="confirm-password" class="form-label">Confirm New Password</label>
+                                                    <input type="password" class="form-control" id="confirm-password" name="confirm-password" required>
+                                                </div>
+                                                <div class="col-12 text-end mt-3">
+                                                    <button type="submit" class="btn btn-primary">Update Password</button>
+                                                </div>
+                                            </form>
+                                        </div>
                                     </div>
-                                    <button type="submit" class="primary-button">Save Preferences</button>
-                                </form>
+                                    
+                                    <div class="settings-section card mb-4">
+                                        <div class="card-body">
+                                            <h4 class="card-title">Email Preferences</h4>
+                                            <form id="email-preferences-form">
+                                                <div class="mb-3 form-check">
+                                                    <input type="checkbox" class="form-check-input" id="order-notifications" name="order-notifications" checked>
+                                                    <label class="form-check-label" for="order-notifications">Order Updates</label>
+                                                </div>
+                                                <div class="mb-3 form-check">
+                                                    <input type="checkbox" class="form-check-input" id="chat-notifications" name="chat-notifications" checked>
+                                                    <label class="form-check-label" for="chat-notifications">Chat Notifications</label>
+                                                </div>
+                                                <div class="mb-3 form-check">
+                                                    <input type="checkbox" class="form-check-input" id="promotional-emails" name="promotional-emails">
+                                                    <label class="form-check-label" for="promotional-emails">Promotional Emails</label>
+                                                </div>
+                                                <div class="text-end">
+                                                    <button type="submit" class="btn btn-primary">Save Preferences</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="settings-section card">
+                                        <div class="card-body">
+                                            <h4 class="card-title">Account Actions</h4>
+                                            <p class="text-muted">Manage your account status</p>
+                                            <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+                                                <button id="switch-to-seller" class="btn btn-outline-primary">
+                                                    <i data-feather="briefcase" class="me-1"></i> Switch to Seller Account
+                                                </button>
+                                                <button id="deactivate-account" class="btn btn-outline-danger">
+                                                    <i data-feather="user-x" class="me-1"></i> Deactivate Account
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -199,14 +418,63 @@
         </section>
     </main>
 
-    <footer>
-        <div class="container">
-            <p>&copy; 2025 BookResell - All rights reserved</p>
+    <footer class="footer mt-auto py-3 bg-light">
+        <div class="container text-center">
+            <span class="text-muted">&copy; 2025 BookResell - A marketplace for pre-loved books</span>
         </div>
     </footer>
 
-    <script src="/js/auth.js"></script>
-    <script src="/js/cart.js"></script>
-    <script src="/js/profile.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/cart.js"></script>
+    <script src="js/profile.js"></script>
+    
+    <script>
+        // Initialize Feather icons and listeners when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize Feather icons
+            feather.replace();
+            
+            // Add event listener for profile role switch button
+            const switchRoleBtnProfile = document.getElementById('switch-role-btn-profile');
+            if (switchRoleBtnProfile) {
+                switchRoleBtnProfile.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    switchRole();
+                });
+            }
+            
+            // Add event listener for seller switch button in settings
+            const switchToSellerBtn = document.getElementById('switch-to-seller');
+            if (switchToSellerBtn) {
+                switchToSellerBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    switchRole();
+                });
+            }
+            
+            // Update other-role-profile text
+            const otherRoleProfile = document.getElementById('other-role-profile');
+            if (otherRoleProfile) {
+                const user = getUserData();
+                if (user) {
+                    otherRoleProfile.textContent = user.role === 'seller' ? 'Buyer' : 'Seller';
+                }
+            }
+            
+            // Deactivate account button event
+            const deactivateBtn = document.getElementById('deactivate-account');
+            if (deactivateBtn) {
+                deactivateBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (confirm('Are you sure you want to deactivate your account? This action cannot be undone.')) {
+                        // Call API to deactivate account
+                        alert('Account deactivation is not implemented yet. This is just a placeholder.');
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>
