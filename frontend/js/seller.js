@@ -740,6 +740,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize add book form
     initializeAddBookForm();
     
+    // Initialize book donation functionality
+    initializeBookDonation();
+    
     // Reset add book form when modal is closed
     const addBookModal = document.getElementById('addBookModal');
     if (addBookModal) {
@@ -749,4 +752,153 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('price-warning').style.display = 'none';
         });
     }
+    
+    // Reset donation form when modal is closed
+    const donateBookModal = document.getElementById('donateBookModal');
+    if (donateBookModal) {
+        donateBookModal.addEventListener('hidden.bs.modal', function() {
+            if (document.getElementById('donation-message')) {
+                document.getElementById('donation-message').value = '';
+            }
+            if (document.getElementById('donate-book-error')) {
+                document.getElementById('donate-book-error').style.display = 'none';
+            }
+        });
+    }
 });
+
+/**
+ * Initialize book donation functionality
+ */
+function initializeBookDonation() {
+    // Load seller's books for donation
+    const donateBookModal = document.getElementById('donateBookModal');
+    if (donateBookModal) {
+        donateBookModal.addEventListener('shown.bs.modal', loadBooksForDonation);
+    }
+    
+    // Handle donation confirmation
+    const confirmDonationBtn = document.getElementById('confirm-donation-btn');
+    if (confirmDonationBtn) {
+        confirmDonationBtn.addEventListener('click', confirmDonation);
+    }
+}
+
+/**
+ * Load seller's books for donation selection
+ */
+function loadBooksForDonation() {
+    const user = getUserData();
+    if (!user || user.role !== 'seller') return;
+    
+    const tableBody = document.getElementById('donate-books-table');
+    if (!tableBody) return;
+    
+    // Show loading indicator
+    tableBody.innerHTML = `
+        <tr>
+            <td colspan="6" class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </td>
+        </tr>
+    `;
+    
+    // Get all books (the API will return only the seller's books based on authentication)
+    fetch('/api/books', {
+        headers: getAuthHeaders()
+    })
+    .then(response => response.json())
+    .then(books => {
+        // Filter to only show books belonging to this seller and that are not already free
+        const sellerBooks = books.filter(book => book.seller_id === user.id && book.price > 0);
+        
+        // Clear table
+        tableBody.innerHTML = '';
+        
+        if (sellerBooks.length === 0) {
+            // Show empty table message
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center text-muted">
+                        You don't have any paid books to donate. Add new books or select books that currently have a price greater than zero.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        // Add each book to the table
+        sellerBooks.forEach(book => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>
+                    <div class="form-check">
+                        <input class="form-check-input donate-book-checkbox" type="checkbox" value="${book.id}" id="donate-book-${book.id}">
+                    </div>
+                </td>
+                <td>
+                    <img src="${book.cover_image || 'images/book-placeholder.jpg'}" alt="${book.title}" class="img-thumbnail" style="width: 50px;">
+                </td>
+                <td>${book.title}</td>
+                <td>${book.author}</td>
+                <td>₹${book.price.toFixed(2)}</td>
+                <td>${book.condition}</td>
+            `;
+            tableBody.appendChild(row);
+        });
+    })
+    .catch(error => {
+        console.error('Error loading books for donation:', error);
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center text-danger">
+                    Failed to load books. Please try again.
+                </td>
+            </tr>
+        `;
+    });
+}
+
+/**
+ * Confirm book donation and update book listings
+ */
+function confirmDonation() {
+    const checkboxes = document.querySelectorAll('.donate-book-checkbox:checked');
+    const donationMessage = document.getElementById('donation-message').value.trim();
+    const errorDiv = document.getElementById('donate-book-error');
+    
+    // Validate at least one book is selected
+    if (checkboxes.length === 0) {
+        errorDiv.textContent = 'Please select at least one book to donate.';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    
+    // Get selected book IDs
+    const bookIds = Array.from(checkboxes).map(cb => cb.value);
+    
+    // In a real application, we'd make API calls to update books to free status
+    // For demo purposes, we'll just simulate success
+    
+    // Update donation stats
+    const booksCount = parseInt(document.getElementById('books-donated').textContent) || 0;
+    const readersCount = parseInt(document.getElementById('readers-helped').textContent) || 0;
+    const impactScore = parseInt(document.getElementById('impact-score').textContent) || 0;
+    
+    document.getElementById('books-donated').textContent = booksCount + bookIds.length;
+    document.getElementById('readers-helped').textContent = readersCount + (bookIds.length * 3); // Assuming each book helps ~3 readers
+    document.getElementById('impact-score').textContent = impactScore + (bookIds.length * 15); // Impact points per book
+    
+    // Hide the donate modal and show success modal
+    const donateModal = bootstrap.Modal.getInstance(document.getElementById('donateBookModal'));
+    donateModal.hide();
+    
+    // Show success modal
+    const successModal = new bootstrap.Modal(document.getElementById('donationSuccessModal'));
+    successModal.show();
+    
+    // Reload book listings to reflect changes
+    setTimeout(loadSellerBooks, 500);
+}

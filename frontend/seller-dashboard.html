@@ -27,16 +27,36 @@
                         <li class="nav-item">
                             <a class="nav-link" href="#" id="nav-books">Books</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link active" href="seller-dashboard.html">Seller Dashboard</a>
+                        <li class="nav-item seller-only">
+                            <a class="nav-link active" href="seller-dashboard.html">
+                                <i data-feather="briefcase" class="me-1"></i> Seller Dashboard
+                            </a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="chat.html">Messages</a>
+                        <li class="nav-item authenticated">
+                            <a class="nav-link" href="chat.html">
+                                <i data-feather="message-circle" class="me-1"></i> Messages
+                                <span id="unread-message-count" class="badge bg-danger rounded-pill">0</span>
+                            </a>
                         </li>
                     </ul>
                     <div class="d-flex align-items-center">
-                        <span class="navbar-text me-3" id="username-display"></span>
-                        <button class="btn btn-light" id="logout-btn">Logout</button>
+                        <div class="dropdown">
+                            <button class="btn btn-primary dropdown-toggle" type="button" id="user-menu-btn" data-bs-toggle="dropdown" aria-expanded="false">
+                                <span id="username-display">User</span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="user-menu-btn">
+                                <li class="buyer-only" style="display: none"><a class="dropdown-item" href="profile.html"><i data-feather="user" class="me-2"></i> My Profile</a></li>
+                                <li class="buyer-only" style="display: none"><a class="dropdown-item" href="cart.html"><i data-feather="shopping-cart" class="me-2"></i> My Cart</a></li>
+                                <li class="buyer-only" style="display: none"><a class="dropdown-item" href="wishlist.html"><i data-feather="heart" class="me-2"></i> My Wishlist</a></li>
+                                <li class="seller-only"><a class="dropdown-item" href="seller-dashboard.html"><i data-feather="briefcase" class="me-2"></i> Seller Dashboard</a></li>
+                                <li class="seller-only"><a class="dropdown-item" href="seller-profile.html"><i data-feather="user" class="me-2"></i> Seller Profile</a></li>
+                                <li><a class="dropdown-item" href="chat.html"><i data-feather="message-circle" class="me-2"></i> Messages</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" id="switch-role-btn" href="#"><i data-feather="repeat" class="me-2"></i> Switch to <span id="other-role">Buyer</span></a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="#" id="logout-btn"><i data-feather="log-out" class="me-2"></i> Logout</a></li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -81,6 +101,69 @@
                         <h5 class="card-title">Average Price</h5>
                         <h2 class="card-text">₹<span id="average-price">0.00</span></h2>
                         <p class="card-text"><small>Per Book</small></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Seller Incentives Card -->
+        <div class="card mb-4 border-primary">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i data-feather="gift" class="me-2"></i> Community Impact & Rewards</h5>
+                <span class="badge bg-white text-primary">New Program!</span>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <h4>Free Book Donation Program</h4>
+                        <p>Donate free books to readers in need and earn special seller benefits!</p>
+                        
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <div class="card h-100 border-success">
+                                    <div class="card-body">
+                                        <h5 class="card-title text-success">Your Impact</h5>
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <div>Books Donated:</div>
+                                            <div class="badge bg-success rounded-pill fs-6" id="books-donated">0</div>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <div>Readers Helped:</div>
+                                            <div class="badge bg-success rounded-pill fs-6" id="readers-helped">0</div>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>Impact Score:</div>
+                                            <div class="badge bg-success rounded-pill fs-6" id="impact-score">0</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <h5 class="card-title text-primary">Your Rewards</h5>
+                                        <ul class="mb-0">
+                                            <li>Highlighted profile badge</li>
+                                            <li>Priority placement in search results</li>
+                                            <li>Reduced platform fees (up to 50% off)</li>
+                                            <li>Featured seller spotlight</li>
+                                            <li>Access to exclusive seller events</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card h-100 border-primary">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">Donate a Book</h5>
+                                <p class="text-muted mb-3">Mark any of your books as free to participate in the donation program.</p>
+                                <button class="btn btn-primary mt-auto" data-bs-toggle="modal" data-bs-target="#donateBookModal">
+                                    <i data-feather="heart" class="me-1"></i> Donate a Book
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -524,5 +607,97 @@
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/seller.js"></script>
+    
+    <!-- Donate Book Modal -->
+    <div class="modal fade" id="donateBookModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i data-feather="heart" class="me-2"></i> Donate a Book</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger" id="donate-book-error" style="display: none;"></div>
+                    
+                    <div class="mb-4">
+                        <h5>Why Donate?</h5>
+                        <p>When you donate a book, you're helping readers who might not otherwise be able to afford books. Free books create more readers, which benefits our entire community.</p>
+                        <div class="alert alert-success">
+                            <strong>Incentives for Donations:</strong>
+                            <ul class="mb-0 mt-2">
+                                <li>For every 5 books donated: 5% reduction in platform fees</li>
+                                <li>Donator badge shown on your profile</li>
+                                <li>Higher visibility in search results</li>
+                                <li>Featured seller status (10+ donations)</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <h5 class="mb-3">Select Books to Donate</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Select</th>
+                                    <th>Cover</th>
+                                    <th>Title</th>
+                                    <th>Author</th>
+                                    <th>Current Price</th>
+                                    <th>Condition</th>
+                                </tr>
+                            </thead>
+                            <tbody id="donate-books-table">
+                                <!-- Books will be loaded here -->
+                                <tr>
+                                    <td colspan="6" class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="form-group mt-3">
+                        <label for="donation-message" class="form-label">Message to Recipients (Optional)</label>
+                        <textarea id="donation-message" class="form-control" rows="3" placeholder="Share why you're donating these books or include an inspirational message for the recipients..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirm-donation-btn">
+                        <i data-feather="heart" class="me-1"></i> Confirm Donation
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Donation Success Modal -->
+    <div class="modal fade" id="donationSuccessModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">Donation Successful!</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <div class="mb-4">
+                        <i data-feather="award" style="width: 60px; height: 60px; color: gold;"></i>
+                    </div>
+                    <h4>Thank You for Your Generosity!</h4>
+                    <p>Your book donation will help spread knowledge and joy to readers who need it most.</p>
+                    <div class="alert alert-info mt-3">
+                        <strong>Your Rewards:</strong>
+                        <p class="mb-0 mt-2">You've earned the <span class="badge bg-success">Community Hero</span> badge and platform fee reduction!</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" data-bs-dismiss="modal">Continue</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
