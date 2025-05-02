@@ -108,6 +108,7 @@ func HandleChatConnection(w http.ResponseWriter, r *http.Request, bookIDStr stri
         err = db.DB.QueryRow("SELECT seller_id, title FROM books WHERE id = $1", bookID).Scan(&sellerID, &bookTitle)
         if err != nil {
                 if err == sql.ErrNoRows {
+                        log.Printf("Book not found: %d", bookID)
                         conn.WriteJSON(map[string]interface{}{"type": "error", "content": "Book not found"})
                         return
                 }
@@ -115,6 +116,8 @@ func HandleChatConnection(w http.ResponseWriter, r *http.Request, bookIDStr stri
                 conn.WriteJSON(map[string]interface{}{"type": "error", "content": "Database error"})
                 return
         }
+        
+        log.Printf("Book found - ID: %d, Title: %s, Seller ID: %d", bookID, bookTitle, sellerID)
 
         // Check if user is either the seller or a buyer
         if role == "seller" && userID != sellerID {
@@ -125,6 +128,9 @@ func HandleChatConnection(w http.ResponseWriter, r *http.Request, bookIDStr stri
 
         // Get or create chat session
         var chatID int
+        
+        log.Printf("Processing chat for user ID: %d, role: %s, book ID: %d, seller ID: %d", userID, role, bookID, sellerID)
+        
         if role == "buyer" {
                 // Check if chat already exists
                 err = db.DB.QueryRow(
@@ -135,6 +141,7 @@ func HandleChatConnection(w http.ResponseWriter, r *http.Request, bookIDStr stri
                 if err != nil {
                         if err == sql.ErrNoRows {
                                 // Create new chat session
+                                log.Printf("Creating new chat for buyer ID: %d with seller ID: %d about book ID: %d", userID, sellerID, bookID)
                                 err = db.DB.QueryRow(
                                         "INSERT INTO chats (book_id, buyer_id, seller_id) VALUES ($1, $2, $3) RETURNING id",
                                         bookID, userID, sellerID,
@@ -144,25 +151,32 @@ func HandleChatConnection(w http.ResponseWriter, r *http.Request, bookIDStr stri
                                         conn.WriteJSON(map[string]interface{}{"type": "error", "content": "Failed to create chat session"})
                                         return
                                 }
+                                log.Printf("Created new chat with ID: %d", chatID)
                         } else {
                                 log.Printf("Database error checking chat: %v", err)
                                 conn.WriteJSON(map[string]interface{}{"type": "error", "content": "Database error"})
                                 return
                         }
+                } else {
+                        log.Printf("Found existing chat with ID: %d", chatID)
                 }
-        } else {
+        } else { // Seller
                 // For seller, we need the buyer ID from the request
                 buyerIDStr := r.URL.Query().Get("buyer_id")
                 if buyerIDStr == "" {
+                        log.Printf("Seller tried to access chat without providing a buyer_id")
                         conn.WriteJSON(map[string]interface{}{"type": "error", "content": "Buyer ID required"})
                         return
                 }
 
                 buyerID, err := strconv.Atoi(buyerIDStr)
                 if err != nil {
+                        log.Printf("Invalid buyer ID: %s", buyerIDStr)
                         conn.WriteJSON(map[string]interface{}{"type": "error", "content": "Invalid buyer ID"})
                         return
                 }
+                
+                log.Printf("Seller ID: %d accessing chat with buyer ID: %d about book ID: %d", userID, buyerID, bookID)
 
                 // Get the chat ID for this seller-buyer-book combination
                 err = db.DB.QueryRow(
@@ -172,12 +186,27 @@ func HandleChatConnection(w http.ResponseWriter, r *http.Request, bookIDStr stri
 
                 if err != nil {
                         if err == sql.ErrNoRows {
-                                conn.WriteJSON(map[string]interface{}{"type": "error", "content": "Chat session not found"})
+                                log.Printf("Chat session not found for book: %d, buyer: %d, seller: %d", bookID, buyerID, userID)
+                                
+                                // Let's try to create a new chat in this case too
+                                log.Printf("Creating new chat for seller with buyer ID: %d", buyerID)
+                                err = db.DB.QueryRow(
+                                        "INSERT INTO chats (book_id, buyer_id, seller_id) VALUES ($1, $2, $3) RETURNING id",
+                                        bookID, buyerID, userID,
+                                ).Scan(&chatID)
+                                if err != nil {
+                                        log.Printf("Database error creating chat: %v", err)
+                                        conn.WriteJSON(map[string]interface{}{"type": "error", "content": "Failed to create chat session"})
+                                        return
+                                }
+                                log.Printf("Created new chat with ID: %d", chatID)
+                        } else {
+                                log.Printf("Database error checking chat: %v", err)
+                                conn.WriteJSON(map[string]interface{}{"type": "error", "content": "Database error"})
                                 return
                         }
-                        log.Printf("Database error checking chat: %v", err)
-                        conn.WriteJSON(map[string]interface{}{"type": "error", "content": "Database error"})
-                        return
+                } else {
+                        log.Printf("Found existing chat with ID: %d", chatID)
                 }
         }
 
@@ -400,9 +429,12 @@ func GetChatMessages(c *gin.Context) {
         // Get chat ID from URL
         chatID, err := strconv.Atoi(c.Param("id"))
         if err != nil {
+                log.Printf("Invalid chat ID: %s", c.Param("id"))
                 c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid chat ID"})
                 return
         }
+        
+        log.Printf("Getting chat messages for chat ID: %d for user ID: %d", chatID, userID)
 
         // Verify the user is part of this chat
         var count int
@@ -416,9 +448,12 @@ func GetChatMessages(c *gin.Context) {
                 return
         }
         if count == 0 {
+                log.Printf("User ID %d attempted to access chat ID %d without permission", userID, chatID)
                 c.JSON(http.StatusForbidden, gin.H{"error": "You are not authorized to view this chat"})
                 return
         }
+        
+        log.Printf("User ID %d has permission to access chat ID %d", userID, chatID)
 
         // Get chat messages
         messages, err := getChatHistory(chatID)
@@ -427,6 +462,8 @@ func GetChatMessages(c *gin.Context) {
                 c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch chat messages"})
                 return
         }
+        
+        log.Printf("Found %d messages for chat ID %d", len(messages), chatID)
 
         // Mark messages as from self or other
         for i := range messages {

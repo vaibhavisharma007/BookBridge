@@ -259,44 +259,75 @@ function connectToWebSocket(chatId) {
     
     // Determine WebSocket protocol (wss for HTTPS, ws for HTTP)
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    
     // If it's a new chat (chatId = 0), we need to include the book ID
     let wsUrl;
+    const urlParams = new URLSearchParams(window.location.search);
+    
     if (chatId === 0) {
-        // Get the book ID from URL parameters or some other storage
-        const urlParams = new URLSearchParams(window.location.search);
+        // Get the book ID from URL parameters
         const bookId = urlParams.get('book_id');
         const sellerId = urlParams.get('seller_id');
+        
         if (!bookId) {
             console.error('No book ID available for new chat');
             return;
         }
+        
         // For starting a new chat, we need both book ID and seller ID
         wsUrl = `${protocol}//${window.location.host}/ws/chat/${bookId}`;
-        if (sellerId) {
-            // If we're a seller, we'll need the buyer ID, which will be handled by the backend
-            // But if we're a buyer starting a chat with a seller, we add the seller ID
-            const user = getUserData();
-            if (user.role === 'buyer') {
-                wsUrl += `?seller_id=${sellerId}`;
-            }
+        
+        // Add seller ID as query parameter for buyer-initiated chats
+        const user = getUserData();
+        if (user.role === 'buyer' && sellerId) {
+            wsUrl += `?seller_id=${sellerId}`;
         }
+        
+        console.log('Connecting to WebSocket URL for new chat:', wsUrl);
     } else {
-        // For existing chats, we can use the chat ID directly since the server knows which book it's for
-        wsUrl = `${protocol}//${window.location.host}/ws/chat/${chatId}`;
+        // For existing chats, identify the book from the chat list
+        const chat = activeChats.find(c => c.chat_id === chatId);
+        if (!chat || !chat.book_id) {
+            console.error('Could not find book ID for chat:', chatId);
+            return;
+        }
+        
+        // Use the book ID for the WebSocket connection
+        wsUrl = `${protocol}//${window.location.host}/ws/chat/${chat.book_id}`;
+        
+        // If we're seller, we need to specify the buyer
+        const user = getUserData();
+        if (user.role === 'seller' && chat.buyer_id) {
+            wsUrl += `?buyer_id=${chat.buyer_id}`;
+        }
+        
+        console.log('Connecting to WebSocket URL for existing chat:', wsUrl);
     }
     
-    // Create new WebSocket connection
-    socket = new WebSocket(wsUrl);
+    try {
+        // Create new WebSocket connection
+        socket = new WebSocket(wsUrl);
     
-    // Add token to the request headers
-    socket.onopen = function() {
-        // Set the Authorization header for the WebSocket connection
-        this.send(JSON.stringify({
-            type: 'auth',
-            token: token
-        }));
-        console.log('WebSocket connected');
-    };
+        // Add token to the request headers
+        socket.onopen = function() {
+            // Set the Authorization header for the WebSocket connection
+            console.log('WebSocket opened, sending authentication');
+            try {
+                this.send(JSON.stringify({
+                    type: 'auth',
+                    token: token
+                }));
+                console.log('WebSocket authentication sent');
+            } catch (sendError) {
+                console.error('WebSocket authentication error:', sendError);
+                alert('Chat connection failed. Please reload the page and try again.');
+            }
+        };
+    } catch (connError) {
+        console.error('Failed to create WebSocket connection:', connError);
+        alert('Chat connection failed. Please reload the page and try again.');
+        return;
+    }
     
     // Handle incoming messages
     socket.onmessage = function(event) {
