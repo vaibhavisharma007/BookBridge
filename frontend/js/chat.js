@@ -627,6 +627,8 @@ function addMessageToChat(message) {
 
 /**
  * Send a message via WebSocket
+ * Note: This function is kept for backward compatibility, but messages are
+ * now primarily sent via Deep Chat's requestInterceptor
  */
 function sendMessage() {
     const messageInput = document.getElementById('message-input');
@@ -665,20 +667,31 @@ function sendMessage() {
         messageInput.value = '';
         
         // Add message to UI immediately for better UX (optimistic UI)
-        // The actual message from the server will replace this if needed
         const user = getUserData();
-        addMessageToChat({
+        const message = {
             id: Date.now(),
             sender_id: user.id,
             sender_name: user.username,
             content: content,
             created_at: new Date().toISOString(),
             is_self_sender: true
-        });
+        };
         
-        // Scroll to the bottom
-        const chatMessages = document.getElementById('chat-messages');
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        // If using Deep Chat, add to Deep Chat instead
+        if (deepChatInstance) {
+            deepChatInstance.addMessage({
+                role: 'user',
+                text: content,
+                name: user.username
+            });
+        } else {
+            // Fall back to old UI
+            addMessageToChat(message);
+            
+            // Scroll to the bottom
+            const chatMessages = document.getElementById('chat-messages');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
     } catch (error) {
         console.error('Error sending message:', error);
         alert('Failed to send message. Please try again.');
@@ -763,13 +776,58 @@ function startNewChat(bookId, sellerId) {
                 const selectChatMessage = document.getElementById('select-chat-message');
                 if (selectChatMessage) selectChatMessage.style.display = 'none';
                 
-                // Show the chat messages area with a welcome message
+                // Initialize and show Deep Chat for the new conversation
                 const chatMessages = document.getElementById('chat-messages');
-                chatMessages.innerHTML = `
-                    <div class="text-center py-4">
-                        <p class="text-muted">Start a conversation with the seller about "${book.title}"!</p>
-                    </div>
-                `;
+                const chatArea = document.getElementById('chat-area');
+                const chatLoading = document.getElementById('chat-loading');
+                
+                // Hide the old UI elements
+                if (chatLoading) chatLoading.style.display = 'none';
+                
+                // Show the chat area with Deep Chat
+                if (chatArea) {
+                    chatArea.style.display = 'block';
+                    chatArea.innerHTML = '';
+                    
+                    // Create and configure Deep Chat
+                    const deepChatElement = document.createElement('deep-chat');
+                    deepChatElement.style.height = '400px';
+                    deepChatElement.style.width = '100%';
+                    chatArea.appendChild(deepChatElement);
+                    
+                    // Initialize Deep Chat instance
+                    deepChatInstance = deepChatElement;
+                    
+                    // Add a welcome message
+                    deepChatInstance.addMessage({
+                        role: 'assistant',
+                        text: `Start a conversation with the seller about "${book.title}"!`,
+                        name: 'System'
+                    });
+                    
+                    // Configure Deep Chat for WebSocket communication
+                    deepChatInstance.requestInterceptor = (request) => {
+                        if (socket && socket.readyState === WebSocket.OPEN) {
+                            const message = {
+                                type: 'message',
+                                content: request.text,
+                                chat_id: currentChatId
+                            };
+                            socket.send(JSON.stringify(message));
+                        } else {
+                            console.error('WebSocket not connected!');
+                            return { error: 'WebSocket not connected' };
+                        }
+                        return false; // Prevent default HTTP request
+                    };
+                } else {
+                    // Fallback to the old UI
+                    chatMessages.innerHTML = `
+                        <div class="text-center py-4">
+                            <p class="text-muted">Start a conversation with the seller about "${book.title}"!</p>
+                        </div>
+                    `;
+                }
                 
                 // Refresh chat list after a short delay to include the new chat
                 setTimeout(loadChatSessions, 1000);
