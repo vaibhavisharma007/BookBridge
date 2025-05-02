@@ -179,6 +179,24 @@ func AddBook(c *gin.Context) {
                 return
         }
 
+        // Truncate fields that exceed database column limits
+        if len(input.Title) > 100 {
+                input.Title = input.Title[:97] + "..."
+                log.Printf("Title truncated to stay within database limits")
+        }
+        if len(input.Author) > 100 {
+                input.Author = input.Author[:97] + "..."
+                log.Printf("Author truncated to stay within database limits")
+        }
+        if len(input.Genre) > 50 {
+                input.Genre = input.Genre[:47] + "..."
+                log.Printf("Genre truncated to stay within database limits")
+        }
+        if len(input.Condition) > 20 {
+                input.Condition = input.Condition[:17] + "..."
+                log.Printf("Condition truncated to stay within database limits")
+        }
+
         // Call ML service to predict price
         predictedPrice, err := getPredictedPrice(input)
         if err != nil {
@@ -396,6 +414,24 @@ func UpdateBook(c *gin.Context) {
         c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input data"})
         return
     }
+    
+    // Truncate fields that exceed database column limits
+    if len(input.Title) > 100 {
+        input.Title = input.Title[:97] + "..."
+        log.Printf("Title truncated to stay within database limits")
+    }
+    if len(input.Author) > 100 {
+        input.Author = input.Author[:97] + "..."
+        log.Printf("Author truncated to stay within database limits")
+    }
+    if len(input.Genre) > 50 {
+        input.Genre = input.Genre[:47] + "..."
+        log.Printf("Genre truncated to stay within database limits")
+    }
+    if len(input.Condition) > 20 {
+        input.Condition = input.Condition[:17] + "..."
+        log.Printf("Condition truncated to stay within database limits")
+    }
 
     // Only update image URL if one is provided
     var updateQuery string
@@ -598,6 +634,20 @@ func PredictPrice(c *gin.Context) {
         if err := c.ShouldBindJSON(&input); err != nil {
                 c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
                 return
+        }
+        
+        // Truncate fields that exceed database column limits to ensure consistent behavior
+        if len(input.Title) > 100 {
+                input.Title = input.Title[:97] + "..."
+        }
+        if len(input.Author) > 100 {
+                input.Author = input.Author[:97] + "..."
+        }
+        if len(input.Genre) > 50 {
+                input.Genre = input.Genre[:47] + "..."
+        }
+        if len(input.Condition) > 20 {
+                input.Condition = input.Condition[:17] + "..."
         }
 
         // Call ML service to predict price
