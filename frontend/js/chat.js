@@ -378,9 +378,22 @@ function connectToWebSocket(chatId) {
         if (user.role === 'buyer') {
             wsUrl += `?seller_id=${sellerId}`;
             console.log('Adding seller_id parameter for buyer-initiated chat:', sellerId);
+        } else if (user.role === 'seller') {
+            // For sellers, we would need a buyer_id to initiate a chat
+            // This is typically not how it works (buyers initiate chats)
+            // But if we have a buyer_id from the URL, we can use it
+            const buyerId = urlParams.get('buyer_id');
+            if (buyerId) {
+                wsUrl += `?buyer_id=${buyerId}`;
+                console.log('Adding buyer_id parameter for seller-initiated chat:', buyerId);
+            } else {
+                console.warn('Sellers need a buyer_id to initiate chats.');
+                displayConnectionError('Sellers need a buyer ID to initiate chats.');
+                return;
+            }
         } else {
-            console.warn('Only buyers can initiate chats with sellers.');
-            displayConnectionError('Only buyers can initiate chats with sellers.');
+            console.warn('Unknown user role:', user.role);
+            displayConnectionError('Unknown user role. Please try logging in again.');
             return;
         }
         
@@ -397,13 +410,29 @@ function connectToWebSocket(chatId) {
         // Use the book ID for the WebSocket connection
         wsUrl = `${protocol}//${window.location.host}/ws/chat/${chat.book_id}`;
         
-        // If we're seller, we need to specify the buyer
-        if (user.role === 'seller' && chat.buyer_id) {
+        // Always add the correct parameter based on role
+        if (user.role === 'seller') {
+            // Make sure we have a buyer_id
+            if (!chat.buyer_id) {
+                console.error('Missing buyer_id for seller chat:', chatId);
+                displayConnectionError('Missing buyer information for this chat.');
+                return;
+            }
             wsUrl += `?buyer_id=${chat.buyer_id}`;
             console.log('Adding buyer_id parameter for seller chat:', chat.buyer_id);
-        } else if (user.role === 'buyer' && chat.seller_id) {
+        } else if (user.role === 'buyer') {
+            // Make sure we have a seller_id
+            if (!chat.seller_id) {
+                console.error('Missing seller_id for buyer chat:', chatId);
+                displayConnectionError('Missing seller information for this chat.');
+                return;
+            }
             wsUrl += `?seller_id=${chat.seller_id}`;
             console.log('Adding seller_id parameter for buyer chat:', chat.seller_id);
+        } else {
+            console.warn('Unknown user role:', user.role);
+            displayConnectionError('Unknown user role. Please try logging in again.');
+            return;
         }
         
         console.log('Connecting to WebSocket URL for existing chat:', wsUrl);
