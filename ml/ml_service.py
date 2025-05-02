@@ -8,6 +8,7 @@ import psycopg2
 import psycopg2.extras
 import re
 import os
+import sys
 import pickle
 
 app = Flask(__name__)
@@ -23,12 +24,17 @@ def get_db_connection():
     conn = psycopg2.connect(database_url)
     return conn
 
+# Import the book data fetcher - use a relative import
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from book_data_fetcher import BookDataFetcher
+
 # Book Price Predictor class
 class BookPricePredictor:
     def __init__(self):
         self.vectorizer = TfidfVectorizer(max_features=1000)
         self.model = RandomForestRegressor(n_estimators=100, random_state=42)
         self.is_trained = False
+        self.book_fetcher = BookDataFetcher()
         
         # Create synthetic training data since we don't have actual data
         self._create_synthetic_data()
@@ -64,6 +70,7 @@ class BookPricePredictor:
             "Mark Twain", "Margaret Mitchell", "Paulo Coelho"
         ]
         
+        # Extended genres list with academic and educational subjects
         genres = [
             "Fiction", "Fiction", "Dystopian", "Romance",
             "Fiction", "Political Satire", "Fiction", "Fantasy",
@@ -77,6 +84,15 @@ class BookPricePredictor:
             "Historical Fiction", "Coming of Age", "Gothic", "Romantic",
             "Adventure", "Historical Fiction", "Fantasy"
         ]
+        
+        # Add educational subjects
+        educational_subjects = [
+            "Mathematics", "Physics", "Chemistry", "Biology", "English Literature",
+            "Computer Science", "History", "Geography", "Economics", "Linguistics",
+            "Psychology", "Sociology", "Political Science", "Philosophy", "Engineering",
+            "Medicine", "Law", "Architecture", "Business", "Accountancy"
+        ]
+        genres.extend(educational_subjects)
         
         conditions = ["New", "Like New", "Very Good", "Good", "Acceptable", "Poor"]
         
@@ -98,13 +114,23 @@ class BookPricePredictor:
         
         # Set prices based on conditions and genres with some randomness
         condition_values = {'New': 25, 'Like New': 20, 'Very Good': 15, 'Good': 10, 'Acceptable': 5, 'Poor': 2}
+        # Set price multipliers by genre - educational books tend to be more expensive
         genre_multipliers = {
+            # Fiction categories
             'Fiction': 1.0, 'Romance': 0.9, 'Dystopian': 1.2, 'Fantasy': 1.3, 
             'Political Satire': 1.1, 'Gothic': 1.15, 'Historical Fiction': 1.25,
             'Adventure': 1.1, 'Philosophical Fiction': 1.3, 'Epic': 1.2,
             'Satire': 1.05, 'Realist Fiction': 1.0, 'Modernist': 1.2, 
             'Epic Poetry': 1.3, 'Magical Realism': 1.25, 'Tragedy': 1.1,
-            'Coming of Age': 0.95, 'Romantic': 0.9
+            'Coming of Age': 0.95, 'Romantic': 0.9,
+            
+            # Academic and educational subjects - typically higher priced
+            'Mathematics': 1.6, 'Physics': 1.7, 'Chemistry': 1.6, 'Biology': 1.5,
+            'English Literature': 1.4, 'Computer Science': 1.8, 'History': 1.4,
+            'Geography': 1.5, 'Economics': 1.6, 'Linguistics': 1.5,
+            'Psychology': 1.5, 'Sociology': 1.4, 'Political Science': 1.4,
+            'Philosophy': 1.3, 'Engineering': 1.8, 'Medicine': 2.0,
+            'Law': 1.9, 'Architecture': 1.7, 'Business': 1.5, 'Accountancy': 1.6
         }
         
         for i in range(n_samples):
@@ -140,6 +166,51 @@ class BookPricePredictor:
         self.condition_columns = X_condition.columns
     
     def predict(self, title, author, genre, condition):
+        # First try to get real book price data from online sources
+        try:
+            online_data = self.book_fetcher.search_book_price(title, author)
+            
+            if online_data and online_data.get('price') > 0:
+                # Convert to INR if necessary
+                price = online_data['price']
+                currency = online_data.get('currency', 'INR')
+                
+                # Apply condition adjustment
+                condition_factors = {
+                    'New': 1.0,
+                    'Like New': 0.9,
+                    'Very Good': 0.8,
+                    'Good': 0.7,
+                    'Acceptable': 0.5,
+                    'Poor': 0.3
+                }
+                
+                condition_factor = condition_factors.get(condition, 0.7)
+                adjusted_price = price * condition_factor
+                
+                # If we're not in India but the price isn't in INR, convert (rough estimate)
+                if currency != 'INR':
+                    # Simple conversion rates (approximate)
+                    conversion_rate = 83.0 if currency == 'USD' else 90.0 if currency == 'EUR' else 106.0 if currency == 'GBP' else 83.0
+                    adjusted_price *= conversion_rate
+                
+                # Get additional information
+                metadata = online_data.get('additional_data', {})
+                
+                # Add a small random factor for used books based on condition
+                if condition != 'New':
+                    random_factor = np.random.uniform(0.95, 1.05)
+                    adjusted_price *= random_factor
+                
+                # Return the price with source
+                return round(adjusted_price, 2)
+            
+        except Exception as e:
+            print(f"Error fetching online price data: {e}")
+            # Fall back to ML model
+            pass
+        
+        # Fall back to ML model if online data fails or returns no price
         if not self.is_trained:
             self._train_model()
         
@@ -279,7 +350,12 @@ class BookRecommender:
             'title': [f"Book {i}" for i in range(1, 101)],
             'author': [f"Author {i % 20 + 1}" for i in range(1, 101)],
             'description': [f"Description for book {i}" for i in range(1, 101)],
-            'genre': np.random.choice(['Fiction', 'Mystery', 'Science Fiction', 'Romance', 'Fantasy', 'Thriller', 'Biography', 'History', 'Self-help'], 100)
+            'genre': np.random.choice([
+                # Fiction genres
+                'Fiction', 'Mystery', 'Science Fiction', 'Romance', 'Fantasy', 'Thriller', 'Biography', 'History', 'Self-help',
+                # Educational subjects
+                'Mathematics', 'Physics', 'Chemistry', 'Biology', 'English Literature', 'Computer Science'
+            ], 100)
         }
         
         self.books_df = pd.DataFrame(books_data)
