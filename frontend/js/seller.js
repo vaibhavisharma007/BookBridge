@@ -765,6 +765,22 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    
+    // Initialize edit book functionality
+    const saveEditBookBtn = document.getElementById('save-edit-book');
+    if (saveEditBookBtn) {
+        saveEditBookBtn.addEventListener('click', saveEditedBook);
+    }
+    
+    // Reset edit book form when modal is closed
+    const editBookModal = document.getElementById('editBookModal');
+    if (editBookModal) {
+        editBookModal.addEventListener('hidden.bs.modal', function() {
+            document.getElementById('edit-book-form').reset();
+            document.getElementById('edit-book-error').style.display = 'none';
+            document.getElementById('edit-book-current-image-container').style.display = 'none';
+        });
+    }
 });
 
 /**
