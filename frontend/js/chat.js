@@ -6,6 +6,7 @@
 let currentChatId = null;
 let socket = null;
 let activeChats = [];
+let deepChatInstance = null;
 
 /**
  * Initialize the chat system
@@ -219,14 +220,15 @@ function loadChat(chatId, bookId, bookTitle) {
     const chatMessages = document.getElementById('chat-messages');
     const chatLoading = document.getElementById('chat-loading');
     const selectChatMessage = document.getElementById('select-chat-message');
+    const chatArea = document.getElementById('chat-area');
     
-    chatMessages.innerHTML = '';
     if (selectChatMessage) selectChatMessage.style.display = 'none';
     if (chatLoading) chatLoading.style.display = 'block';
+    if (chatArea) chatArea.style.display = 'none';
     
-    // Show chat input
+    // Hide old chat input (will use Deep Chat instead)
     const chatInputContainer = document.getElementById('chat-input-container');
-    if (chatInputContainer) chatInputContainer.style.display = 'flex';
+    if (chatInputContainer) chatInputContainer.style.display = 'none';
     
     // Load chat messages
     fetch(`/api/chats/${chatId}`, {
@@ -242,28 +244,61 @@ function loadChat(chatId, bookId, bookTitle) {
         // Hide loading indicator
         if (chatLoading) chatLoading.style.display = 'none';
         
-        // Clear chat messages
-        chatMessages.innerHTML = '';
-        
-        if (messages.length === 0) {
-            // No messages yet
-            chatMessages.innerHTML = `
-                <div class="text-center py-4">
-                    <p class="text-muted">No messages yet. Start the conversation!</p>
-                </div>
-            `;
-        } else {
-            // Add messages to the chat
-            messages.forEach(message => {
-                addMessageToChat(message);
+        // Show chat area
+        if (chatArea) {
+            chatArea.style.display = 'block';
+            
+            // Clear any previous chat interface
+            chatArea.innerHTML = '';
+            
+            // Create the Deep Chat element
+            const deepChatElement = document.createElement('deep-chat');
+            deepChatElement.style.height = '400px';
+            deepChatElement.style.width = '100%';
+            chatArea.appendChild(deepChatElement);
+            
+            // Format the existing messages for Deep Chat
+            const formattedMessages = messages.map(message => {
+                const user = getUserData();
+                const isUser = message.sender_id === user.id;
+                
+                return {
+                    role: isUser ? 'user' : 'assistant',
+                    text: message.content,
+                    name: isUser ? user.username : message.sender_name
+                };
             });
             
-            // Scroll to the bottom
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+            // Connect to WebSocket for real-time messages
+            connectToWebSocket(chatId);
+            
+            // Initialize Deep Chat
+            deepChatInstance = document.querySelector('deep-chat');
+            
+            // Set initial messages
+            if (formattedMessages.length > 0) {
+                deepChatInstance.messages = formattedMessages;
+            }
+            
+            // Configure Deep Chat for WebSocket communication
+            deepChatInstance.requestInterceptor = (request) => {
+                // Convert Deep Chat format to our WebSocket format
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    const message = {
+                        type: 'message',
+                        content: request.text,
+                        chat_id: currentChatId
+                    };
+                    socket.send(JSON.stringify(message));
+                } else {
+                    console.error('WebSocket not connected!');
+                    return { error: 'WebSocket not connected' };
+                }
+                
+                // Return false to prevent default HTTP request
+                return false;
+            };
         }
-        
-        // Connect to WebSocket for real-time messages
-        connectToWebSocket(chatId);
     })
     .catch(error => {
         console.error('Error loading messages:', error);
@@ -272,11 +307,14 @@ function loadChat(chatId, bookId, bookTitle) {
         if (chatLoading) chatLoading.style.display = 'none';
         
         // Show error message
-        chatMessages.innerHTML = `
-            <div class="text-center py-4 text-danger">
-                <p>Failed to load messages. Please try again.</p>
-            </div>
-        `;
+        if (chatArea) {
+            chatArea.style.display = 'block';
+            chatArea.innerHTML = `
+                <div class="text-center py-4 text-danger">
+                    <p>Failed to load messages. Please try again.</p>
+                </div>
+            `;
+        }
     });
 }
 
@@ -438,7 +476,7 @@ function connectToWebSocket(chatId) {
             
             if (data.type === 'message') {
                 console.log('Message received:', data);
-                // Add message to the chat
+                // Create message object
                 const message = {
                     id: data.data?.message_id || Date.now(), // Fallback if no message_id
                     sender_id: data.sender_id,
@@ -448,11 +486,25 @@ function connectToWebSocket(chatId) {
                     is_self_sender: data.sender_id === getUserData().id
                 };
                 
-                addMessageToChat(message);
-                
-                // Scroll to the bottom
-                const chatMessages = document.getElementById('chat-messages');
-                chatMessages.scrollTop = chatMessages.scrollHeight;
+                // Check if we're using Deep Chat
+                if (deepChatInstance) {
+                    // Add message to Deep Chat
+                    const user = getUserData();
+                    const isFromCurrentUser = message.sender_id === user.id;
+                    
+                    deepChatInstance.addMessage({
+                        role: isFromCurrentUser ? 'user' : 'assistant',
+                        text: message.content,
+                        name: isFromCurrentUser ? user.username : message.sender_name
+                    });
+                } else {
+                    // Fall back to the old message display method
+                    addMessageToChat(message);
+                    
+                    // Scroll to the bottom
+                    const chatMessages = document.getElementById('chat-messages');
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }
                 
                 // Show notification if needed
                 if (!message.is_self_sender) {
