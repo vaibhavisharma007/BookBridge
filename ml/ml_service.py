@@ -8,6 +8,7 @@ import psycopg2
 import psycopg2.extras
 import re
 import os
+import pickle
 
 app = Flask(__name__)
 
@@ -448,15 +449,33 @@ def predict_price():
 def get_recommendations():
     data = request.json
     user_id = data.get('user_id', 1)
+    recommendation_type = data.get('type', 'content')  # 'content', 'collaborative', or 'trending'
+    book_title = data.get('book_title', None)  # Used for collaborative filtering
+    num_recommendations = data.get('num_recommendations', 5)
     
     # Load books from database or generate synthetic data if not loaded yet
     if not recommender.books_loaded:
         recommender.load_books_from_db()
     
-    # Get recommendations
-    recommendations = recommender.get_content_based_recommendations(user_id)
+    # Get recommendations based on type
+    if recommendation_type == 'collaborative' and book_title:
+        recommendations = recommender.get_collaborative_recommendations(book_title, num_recommendations)
+    elif recommendation_type == 'trending':
+        recommendations = recommender.get_trending_books(num_recommendations)
+    else:  # Default to content-based
+        recommendations = recommender.get_content_based_recommendations(user_id, num_recommendations)
     
     return jsonify(recommendations)
+
+# Trending books endpoint
+@app.route('/trending', methods=['GET'])
+def get_trending_books():
+    num_recommendations = request.args.get('limit', 50, type=int)
+    
+    # Get trending books
+    trending_books = recommender.get_trending_books(num_recommendations)
+    
+    return jsonify(trending_books)
 
 # Health check endpoint
 @app.route('/health', methods=['GET'])
