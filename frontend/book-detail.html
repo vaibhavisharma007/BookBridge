@@ -93,8 +93,28 @@
                                 <p class="mb-0"><strong>Status:</strong> <span id="book-status" class="badge bg-success">Available</span></p>
                             </div>
                             <div class="col-md-6">
-                                <p class="mb-2"><strong>Seller:</strong> <span id="book-seller"></span></p>
-                                <p class="mb-2"><strong>Listed on:</strong> <span id="book-date"></span></p>
+                                <div class="seller-info">
+                                    <p class="mb-2"><strong>Seller:</strong> <span id="book-seller"></span></p>
+                                    <p class="mb-2"><strong>Listed on:</strong> <span id="book-date"></span></p>
+                                    <div class="seller-rating mb-2">
+                                        <strong>Seller Rating:</strong>
+                                        <div class="d-flex align-items-center">
+                                            <div class="stars me-2">
+                                                <i data-feather="star" class="text-warning"></i>
+                                                <i data-feather="star" class="text-warning"></i>
+                                                <i data-feather="star" class="text-warning"></i>
+                                                <i data-feather="star" class="text-warning"></i>
+                                                <i data-feather="star" class="text-secondary"></i>
+                                            </div>
+                                            <span>(4.1/5)</span>
+                                        </div>
+                                    </div>
+                                    <div class="seller-profile-link mb-2">
+                                        <a href="#" id="view-seller-profile" class="btn btn-sm btn-outline-secondary">
+                                            <i data-feather="user"></i> View Seller Profile
+                                        </a>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -232,6 +252,16 @@
                     document.getElementById('contact-seller').style.display = 'block';
                 } else if (!user) {
                     document.getElementById('not-authenticated-message').style.display = 'block';
+                }
+                
+                // Set up seller profile link
+                const viewSellerProfileBtn = document.getElementById('view-seller-profile');
+                if (viewSellerProfileBtn) {
+                    viewSellerProfileBtn.addEventListener('click', function(event) {
+                        event.preventDefault();
+                        // Open seller profile page or modal
+                        window.location.href = `seller-profile.html?id=${book.seller_id}`;
+                    });
                 }
                 
                 // Set up chat button event

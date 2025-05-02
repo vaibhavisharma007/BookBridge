@@ -308,6 +308,10 @@ function initializeAddBookForm() {
     const errorMessage = document.getElementById('add-book-error');
     const priceWarning = document.getElementById('price-warning');
     const priceGuidance = document.getElementById('price-guidance');
+    const priceRecommendationCard = document.getElementById('price-recommendation-card');
+    const priceSlider = document.getElementById('price-slider');
+    const priceSliderContainer = document.getElementById('price-slider-container');
+    const getPriceRecommendationBtn = document.getElementById('get-price-recommendation');
     
     if (!submitBookBtn || !addBookForm) return;
     
@@ -320,17 +324,15 @@ function initializeAddBookForm() {
         const condition = document.getElementById('book-condition').value;
         const priceInput = document.getElementById('book-price');
         const priceWarning = document.getElementById('price-warning');
-        const priceGuidance = document.getElementById('price-guidance');
         
         // Only proceed if all required fields are filled
         if (!title || !author || !genre || !condition) {
-            priceGuidance.style.display = 'none';
+            alert('Please fill in title, author, genre and condition to get a price recommendation.');
             return;
         }
         
-        // Show loading indicator in the price guidance element
-        priceGuidance.innerHTML = '<div class="d-flex align-items-center"><div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div><span>Calculating recommended price...</span></div>';
-        priceGuidance.style.display = 'block';
+        // Show price recommendation card
+        if (priceRecommendationCard) priceRecommendationCard.style.display = 'block';
         
         // Prepare request data
         const requestData = {
@@ -357,11 +359,12 @@ function initializeAddBookForm() {
         })
         .then(data => {
             // Format the predicted price with Indian Rupee symbol
+            const predictedPrice = data.predicted_price;
             const formattedPrice = new Intl.NumberFormat('en-IN', {
                 style: 'currency',
                 currency: 'INR',
                 maximumFractionDigits: 0
-            }).format(data.predicted_price);
+            }).format(predictedPrice);
             
             // Update the price guidance element
             priceGuidance.innerHTML = `
@@ -371,6 +374,13 @@ function initializeAddBookForm() {
                         <div>
                             <strong>Recommended Price:</strong> ${formattedPrice}
                             <div class="small">Based on similar books in our marketplace</div>
+                            <div class="mt-2">
+                                <ul>
+                                    <li>Books in "${condition}" condition typically sell for this price</li>
+                                    <li>Pricing within 10% of recommendation increases sale chances by 3x</li>
+                                    <li>Most similar books in this genre sell within this range</li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -379,33 +389,91 @@ function initializeAddBookForm() {
             // Replace feather icons
             feather.replace();
             
-            // Store the predicted price for later validation
-            priceGuidance.dataset.predictedPrice = data.predicted_price;
+            // Set min, max and recommended price for slider
+            const minPrice = Math.max(0, Math.round(predictedPrice * 0.7));
+            const maxPrice = Math.round(predictedPrice * 1.3);
             
-            // Check if user entered a price and compare with prediction
-            const currentPrice = parseFloat(priceInput.value);
-            if (!isNaN(currentPrice) && currentPrice > data.predicted_price * 1.1) {
-                priceWarning.textContent = `Your price is significantly higher than the recommended price of ${formattedPrice}. Consider lowering it to increase chances of selling.`;
-                priceWarning.style.display = 'block';
-            } else {
-                priceWarning.style.display = 'none';
+            // Update price slider
+            if (priceSlider && priceSliderContainer) {
+                priceSliderContainer.style.display = 'block';
+                priceSlider.min = minPrice;
+                priceSlider.max = maxPrice;
+                priceSlider.value = predictedPrice;
+                
+                document.getElementById('min-price').textContent = minPrice;
+                document.getElementById('recommended-price').textContent = predictedPrice;
+                document.getElementById('max-price').textContent = maxPrice;
+                
+                // Set default value in price input
+                if (priceInput) {
+                    priceInput.value = predictedPrice;
+                }
             }
+            
+            // Store the predicted price for later validation
+            if (priceGuidance) priceGuidance.dataset.predictedPrice = predictedPrice;
         })
         .catch(error => {
             console.error('Error getting price prediction:', error);
-            priceGuidance.innerHTML = '<div class="text-danger">Unable to calculate recommended price. Please set a fair price based on condition and market value.</div>';
+            if (priceGuidance) {
+                priceGuidance.innerHTML = '<div class="alert alert-danger">Unable to calculate recommended price. Please set a fair price based on condition and market value.</div>';
+            }
         });
-        
-
     }
     
-    // Add event listeners to form fields for real-time price prediction
-    ['book-title', 'book-author', 'book-genre', 'book-condition'].forEach(fieldId => {
-        const field = document.getElementById(fieldId);
-        if (field) {
-            field.addEventListener('change', getPricePrediction);
-        }
-    });
+    // Add event listener for slider change
+    if (priceSlider) {
+        priceSlider.addEventListener('input', function() {
+            const priceInput = document.getElementById('book-price');
+            const priceWarning = document.getElementById('price-warning');
+            const recommendedPrice = parseFloat(document.getElementById('recommended-price').textContent);
+            
+            if (priceInput) {
+                priceInput.value = this.value;
+            }
+            
+            // Show warning if price is significantly higher than recommendation
+            if (parseFloat(this.value) > recommendedPrice * 1.1) {
+                if (priceWarning) {
+                    priceWarning.textContent = `Your price is significantly higher than the recommended price of ₹${recommendedPrice}. Consider lowering it to increase chances of selling.`;
+                    priceWarning.style.display = 'block';
+                }
+            } else {
+                if (priceWarning) priceWarning.style.display = 'none';
+            }
+        });
+    }
+    
+    // Add event listener for price input change
+    const priceInput = document.getElementById('book-price');
+    if (priceInput && priceSlider) {
+        priceInput.addEventListener('input', function() {
+            const value = parseFloat(this.value);
+            const min = parseFloat(priceSlider.min);
+            const max = parseFloat(priceSlider.max);
+            
+            // Update slider if value is within range
+            if (!isNaN(value) && value >= min && value <= max) {
+                priceSlider.value = value;
+            }
+            
+            // Show warning if price is significantly higher than recommendation
+            const recommendedPrice = parseFloat(document.getElementById('recommended-price').textContent);
+            if (!isNaN(value) && !isNaN(recommendedPrice) && value > recommendedPrice * 1.1) {
+                if (priceWarning) {
+                    priceWarning.textContent = `Your price is significantly higher than the recommended price of ₹${recommendedPrice}. Consider lowering it to increase chances of selling.`;
+                    priceWarning.style.display = 'block';
+                }
+            } else {
+                if (priceWarning) priceWarning.style.display = 'none';
+            }
+        });
+    }
+    
+    // Add event listener for get price recommendation button
+    if (getPriceRecommendationBtn) {
+        getPriceRecommendationBtn.addEventListener('click', getPricePrediction);
+    }
     
     // Handle form submission
     submitBookBtn.addEventListener('click', function() {
