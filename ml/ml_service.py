@@ -558,6 +558,49 @@ def health_check():
         }
     })
 
+# Model metrics endpoint
+@app.route('/model-metrics', methods=['GET'])
+def model_metrics():
+    # Get total interactions count
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT COUNT(*) FROM user_book_interactions")
+    total_interactions = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(DISTINCT user_id) FROM user_book_interactions")
+    active_users = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(DISTINCT book_id) FROM user_book_interactions")
+    interacted_books = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM books")
+    total_books = cursor.fetchone()[0]
+    
+    # Calculate percentage of books covered by interactions
+    book_coverage = 0 if total_books == 0 else (interacted_books / total_books) * 100
+    
+    # Calculate metrics for price prediction model
+    price_accuracy = price_predictor.get_model_accuracy() if hasattr(price_predictor, 'get_model_accuracy') else 'N/A'
+    
+    cursor.close()
+    conn.close()
+    
+    return jsonify({
+        'recommendation_metrics': {
+            'total_interactions': total_interactions,
+            'active_users': active_users,
+            'interacted_books': interacted_books,
+            'total_books': total_books,
+            'book_coverage_percentage': round(book_coverage, 2)
+        },
+        'price_prediction_metrics': {
+            'model_accuracy': price_accuracy,
+            'model_type': 'RandomForestRegressor',
+            'features_used': ['title', 'author', 'genre', 'condition']
+        }
+    })
+
 if __name__ == '__main__':
     # Run the Flask app
     port = int(os.environ.get('PORT', 5001))
