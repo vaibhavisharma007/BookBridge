@@ -940,6 +940,63 @@ function startNewChat(bookId, sellerId) {
     });
 }
 
+/**
+ * Initialize the book recommendation chatbot (separate from peer-to-peer chat)
+ * This is used on the index page and other pages
+ */
+function initBookRecommendationChatbot() {
+    // Find all book assistant containers in the page
+    const containers = document.querySelectorAll('.book-assistant-container');
+    if (containers.length === 0) {
+        return; // No containers found, nothing to do
+    }
+    
+    console.log('Found', containers.length, 'book assistant containers');
+    
+    containers.forEach((container, index) => {
+        try {
+            // Clear previous content
+            container.innerHTML = '';
+            
+            // Create a new Deep Chat element for this container
+            const chatbotElement = document.createElement('deep-chat');
+            
+            // Configure the chatbot
+            chatbotElement.style.height = '400px';
+            chatbotElement.style.width = '100%';
+            chatbotElement.style.border = '1px solid #e9ecef';
+            chatbotElement.style.borderRadius = '0.25rem';
+            chatbotElement.classList.add('book-assistant');
+            chatbotElement.id = `book-assistant-${index}`;
+            
+            // Set up the connection to the API
+            chatbotElement.setAttribute('directConnection', 'true');
+            chatbotElement.setAttribute('requestUrl', '/api/chatbot');
+            
+            // Welcome message
+            chatbotElement.setAttribute('initialMessages', JSON.stringify([
+                { role: 'assistant', text: 'Hello! I\'m the BookResell Assistant. How can I help you find books today?' }
+            ]));
+            
+            // Add authentication if available
+            if (isAuthenticated()) {
+                const token = localStorage.getItem('token');
+                chatbotElement.setAttribute('requestHeaders', JSON.stringify({
+                    'Authorization': `Bearer ${token}`
+                }));
+            }
+            
+            // Add to the DOM
+            container.appendChild(chatbotElement);
+            
+            console.log('Initialized book assistant in container', index);
+        } catch (error) {
+            console.error('Error initializing book assistant in container', index, error);
+            container.innerHTML = '<div class="alert alert-danger">Failed to load book assistant. Please refresh the page.</div>';
+        }
+    });
+}
+
 // Initialize chat when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Feather icons
@@ -952,4 +1009,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (document.getElementById('chat-container')) {
         initializeChat();
     }
+    
+    // Initialize book recommendation chatbot on all pages
+    // This uses a small delay to ensure the Deep Chat library is loaded
+    setTimeout(initBookRecommendationChatbot, 500);
 });
