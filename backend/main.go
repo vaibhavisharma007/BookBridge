@@ -9,6 +9,7 @@ import (
         "github.com/gin-contrib/cors"
         "github.com/gin-gonic/gin"
         "github.com/gorilla/websocket"
+        "github.com/joho/godotenv"
         "reselling-app/db"
         "reselling-app/handlers"
         "reselling-app/middleware"
@@ -23,6 +24,15 @@ var upgrader = websocket.Upgrader{
 }
 
 func main() {
+        // Load environment variables from .env file
+        if err := godotenv.Load(); err != nil {
+                log.Println("Warning: Error loading .env file:", err)
+                // Try looking for the .env file in parent directory
+                if err := godotenv.Load("../.env"); err != nil {
+                        log.Println("Warning: Error loading .env from parent directory:", err)
+                }
+        }
+
         // Initialize database connection
         if err := db.InitDB(); err != nil {
                 log.Fatalf("Failed to connect to database: %v", err)
@@ -123,6 +133,17 @@ func main() {
                 chats.GET("/:id", handlers.GetChatMessages)
         }
 
+        // Initialize Stripe
+        handlers.InitStripe()
+
+        // Payment routes
+        payments := router.Group("/api")
+        {
+                payments.Use(middleware.AuthMiddleware())
+                payments.POST("/create-payment-intent", handlers.CreatePaymentIntent)
+                payments.POST("/payment-success", handlers.RecordPaymentSuccess)
+        }
+
         // WebSocket handler for chat
         router.GET("/ws/chat/:bookId", func(c *gin.Context) {
                 handlers.HandleChatConnection(c.Writer, c.Request, c.Param("bookId"), upgrader)
@@ -154,6 +175,18 @@ func main() {
         })
         
         router.GET("/chat.html", func(c *gin.Context) {
+            simpleIndexHandler(c.Writer, c.Request)
+        })
+        
+        router.GET("/cart.html", func(c *gin.Context) {
+            simpleIndexHandler(c.Writer, c.Request)
+        })
+        
+        router.GET("/checkout.html", func(c *gin.Context) {
+            simpleIndexHandler(c.Writer, c.Request)
+        })
+        
+        router.GET("/payment-success.html", func(c *gin.Context) {
             simpleIndexHandler(c.Writer, c.Request)
         })
         

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Success - BookResell</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/checkout.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">
+                <a href="/">BookResell</a>
+            </div>
+            <ul class="nav-links">
+                <li><a href="/">Home</a></li>
+                <li class="auth-required seller-only"><a href="/seller-dashboard.html">Seller Dashboard</a></li>
+                <li class="auth-required"><a href="/chat.html">Messages</a></li>
+                <li class="auth-required"><a href="/cart.html">Cart <span id="cart-count" class="cart-badge">0</span></a></li>
+                <li class="auth-not-required"><a href="/login.html">Login</a></li>
+                <li class="auth-not-required"><a href="/register.html">Register</a></li>
+                <li class="auth-required"><a href="#" id="logout-btn">Logout</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <section class="checkout-section">
+            <div id="payment-success" style="display: block;">
+                <h2>Thank you for your purchase!</h2>
+                <p>Your payment has been processed successfully.</p>
+                <p>You will receive an email confirmation shortly.</p>
+                <a href="/" class="primary-button">Continue Shopping</a>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 BookResell - All rights reserved</p>
+        </div>
+    </footer>
+
+    <script src="/js/auth.js"></script>
+    <script src="/js/cart.js"></script>
+    <script>
+        // Cleanup cart on successful payment
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check if we're returning from a successful payment
+            const urlParams = new URLSearchParams(window.location.search);
+            const redirectStatus = urlParams.get('redirect_status');
+            
+            if (redirectStatus === 'succeeded') {
+                // Clear the cart
+                localStorage.removeItem('cart');
+                updateCartCount();
+                
+                // Record payment success on the server if needed
+                const paymentIntentId = urlParams.get('payment_intent');
+                if (paymentIntentId) {
+                    // You could make an API call here to notify your server
+                    console.log('Payment successful with ID:', paymentIntentId);
+                }
+            } else {
+                // If not coming from a successful payment, redirect to home
+                // window.location.href = '/';
+            }
+        });
+    </script>
+</body>
+</html>

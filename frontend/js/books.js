@@ -218,5 +218,38 @@ document.addEventListener('DOMContentLoaded', function() {
                 loadBooks(filters);
             });
         }
+        
+        // Set up event delegation for add-to-cart buttons
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.add-to-cart-btn')) {
+                const button = e.target.closest('.add-to-cart-btn');
+                const bookId = button.getAttribute('data-book-id');
+                
+                // Find the book data
+                fetch(`/api/books/${bookId}`, {
+                    headers: getAuthHeaders()
+                })
+                .then(response => response.json())
+                .then(book => {
+                    // Add the book to the cart
+                    addToCart({
+                        id: book.id,
+                        title: book.title,
+                        author: book.author,
+                        price: book.price,
+                        seller_id: book.seller_id,
+                        seller_username: book.seller_username,
+                        image_url: book.image_url || 'https://via.placeholder.com/150x200?text=No+Image',
+                        quantity: 1
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching book details for cart:', error);
+                });
+            }
+        });
     }
+    
+    // Initialize feather icons
+    feather.replace();
 });
