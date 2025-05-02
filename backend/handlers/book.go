@@ -630,7 +630,7 @@ func getRecommendations(userID int) ([]models.Book, error) {
 // PredictPrice returns a book price prediction based on ML model
 func PredictPrice(c *gin.Context) {
         // Parse input
-        var input models.BookInput
+        var input models.PredictPriceRequest
         if err := c.ShouldBindJSON(&input); err != nil {
                 c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
                 return
@@ -650,8 +650,17 @@ func PredictPrice(c *gin.Context) {
                 input.Condition = input.Condition[:17] + "..."
         }
 
+        // Convert to BookInput to reuse existing prediction function
+        bookInput := models.BookInput{
+                Title:     input.Title,
+                Author:    input.Author,
+                Genre:     input.Genre,
+                Condition: input.Condition,
+                Price:     0, // Dummy value, not used for prediction
+        }
+
         // Call ML service to predict price
-        predictedPrice, err := getPredictedPrice(input)
+        predictedPrice, err := getPredictedPrice(bookInput)
         if err != nil {
                 log.Printf("Error predicting price: %v", err)
                 c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to predict book price"})

@@ -510,7 +510,10 @@ function initializeAddBookForm() {
         // Submit book to API
         fetch('/api/books', {
             method: 'POST',
-            headers: getAuthHeaders(),
+            headers: {
+                'Content-Type': 'application/json',
+                ...getAuthHeaders()
+            },
             body: JSON.stringify(book)
         })
         .then(response => response.json())
