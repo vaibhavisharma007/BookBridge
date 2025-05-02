@@ -137,10 +137,10 @@ function createBookRow(book) {
         showDeleteConfirmation(bookId, bookTitle);
     });
     
-    // Add event listener for edit button (placeholder for future functionality)
+    // Add event listener for edit book button
     row.querySelector('.edit-book').addEventListener('click', function() {
         const bookId = this.dataset.id;
-        alert(`Edit functionality for book ID ${bookId} will be implemented soon.`);
+        loadBookForEditing(bookId);
     });
     
     return row;
@@ -901,4 +901,205 @@ function confirmDonation() {
     
     // Reload book listings to reflect changes
     setTimeout(loadSellerBooks, 500);
+}
+
+/**
+ * Load book data for editing
+ * @param {Number} bookId - Book ID to edit
+ */
+function loadBookForEditing(bookId) {
+    // Show loading indicator
+    document.getElementById('edit-book-error').style.display = 'none';
+    document.getElementById('edit-book-id').value = bookId;
+
+    // Get book details from API
+    fetch(`/api/books/${bookId}`, {
+        headers: getAuthHeaders()
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Failed to load book details');
+        }
+        return response.json();
+    })
+    .then(book => {
+        // Fill form with book details
+        document.getElementById('edit-book-title').value = book.title;
+        document.getElementById('edit-book-author').value = book.author;
+        document.getElementById('edit-book-description').value = book.description;
+        document.getElementById('edit-book-genre').value = book.genre;
+        document.getElementById('edit-book-condition').value = book.condition;
+        document.getElementById('edit-book-price').value = book.price;
+        
+        // Set current image if available
+        const currentImageContainer = document.getElementById('edit-book-current-image-container');
+        const currentImage = document.getElementById('edit-book-current-image');
+        
+        if (book.image_url) {
+            currentImageContainer.style.display = 'block';
+            currentImage.src = book.image_url;
+            currentImage.alt = `${book.title} by ${book.author}`;
+        } else {
+            currentImageContainer.style.display = 'none';
+        }
+        
+        // Show the modal
+        const editBookModal = new bootstrap.Modal(document.getElementById('editBookModal'));
+        editBookModal.show();
+    })
+    .catch(error => {
+        console.error('Error loading book details:', error);
+        document.getElementById('edit-book-error').textContent = 'Failed to load book details. Please try again.';
+        document.getElementById('edit-book-error').style.display = 'block';
+    });
+}
+
+/**
+ * Save edited book
+ */
+function saveEditedBook() {
+    // Get form values
+    const bookId = document.getElementById('edit-book-id').value;
+    const title = document.getElementById('edit-book-title').value.trim();
+    const author = document.getElementById('edit-book-author').value.trim();
+    const description = document.getElementById('edit-book-description').value.trim();
+    const genre = document.getElementById('edit-book-genre').value;
+    const condition = document.getElementById('edit-book-condition').value;
+    const price = parseFloat(document.getElementById('edit-book-price').value);
+    const imageURL = document.getElementById('edit-book-image').value.trim();
+
+    // Validate form
+    if (!title || !author || !description || !genre || !condition || isNaN(price) || price <= 0) {
+        document.getElementById('edit-book-error').textContent = 'Please fill in all required fields with valid values.';
+        document.getElementById('edit-book-error').style.display = 'block';
+        return;
+    }
+
+    // Prepare data for API
+    const bookData = {
+        title: title,
+        author: author,
+        description: description,
+        genre: genre,
+        condition: condition,
+        price: price
+    };
+
+    // Add image URL if provided
+    if (imageURL) {
+        bookData.image_url = imageURL;
+    }
+
+    // Show loading state
+    const saveButton = document.getElementById('save-edit-book');
+    const originalText = saveButton.textContent;
+    saveButton.disabled = true;
+    saveButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
+
+    // Send update request to API
+    fetch(`/api/books/${bookId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
+        },
+        body: JSON.stringify(bookData)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Failed to update book');
+        }
+        return response.json();
+    })
+    .then(data => {
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('editBookModal'));
+        modal.hide();
+
+        // Show success message as a toast notification
+        showToast('Book updated successfully', 'success');
+
+        // Reload books list
+        loadSellerBooks();
+    })
+    .catch(error => {
+        console.error('Error updating book:', error);
+        document.getElementById('edit-book-error').textContent = 'Failed to update book. Please try again.';
+        document.getElementById('edit-book-error').style.display = 'block';
+    })
+    .finally(() => {
+        // Reset button state
+        saveButton.disabled = false;
+        saveButton.textContent = originalText;
+    });
+}
+
+/**
+ * Show a toast notification
+ * @param {String} message - Message to display
+ * @param {String} type - Type of toast (success, warning, error, info)
+ */
+function showToast(message, type = 'success') {
+    const toastContainer = document.getElementById('toast-container');
+    
+    // Create toast container if it doesn't exist
+    if (!toastContainer) {
+        const container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'position-fixed bottom-0 end-0 p-3';
+        container.style.zIndex = '5';
+        document.body.appendChild(container);
+    }
+    
+    // Set toast class based on type
+    let bgClass = 'bg-success';
+    let iconHTML = '<i data-feather="check-circle"></i>';
+    
+    switch (type) {
+        case 'warning':
+            bgClass = 'bg-warning text-dark';
+            iconHTML = '<i data-feather="alert-triangle"></i>';
+            break;
+        case 'error':
+            bgClass = 'bg-danger';
+            iconHTML = '<i data-feather="alert-circle"></i>';
+            break;
+        case 'info':
+            bgClass = 'bg-info text-dark';
+            iconHTML = '<i data-feather="info"></i>';
+            break;
+    }
+    
+    // Create toast element
+    const toastEl = document.createElement('div');
+    toastEl.className = `toast ${bgClass} text-white`;
+    toastEl.setAttribute('role', 'alert');
+    toastEl.setAttribute('aria-live', 'assertive');
+    toastEl.setAttribute('aria-atomic', 'true');
+    
+    toastEl.innerHTML = `
+        <div class="toast-header ${bgClass} text-white">
+            <div class="me-2">${iconHTML}</div>
+            <strong class="me-auto">BookResell</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            ${message}
+        </div>
+    `;
+    
+    // Add toast to container
+    document.getElementById('toast-container').appendChild(toastEl);
+    
+    // Initialize Feather icons
+    feather.replace();
+    
+    // Initialize and show toast
+    const toast = new bootstrap.Toast(toastEl, { delay: 5000 });
+    toast.show();
+    
+    // Remove toast after it's hidden
+    toastEl.addEventListener('hidden.bs.toast', function() {
+        toastEl.remove();
+    });
 }

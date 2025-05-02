@@ -117,6 +117,7 @@ func main() {
                 books.GET("", handlers.GetAllBooks)
                 books.GET("/:id", handlers.GetBook)
                 books.POST("", middleware.AuthMiddleware(), handlers.AddBook)
+                books.PUT("/:id", middleware.AuthMiddleware(), handlers.UpdateBook)
                 books.DELETE("/:id", middleware.AuthMiddleware(), handlers.DeleteBook)
                 books.GET("/recommendations", middleware.AuthMiddleware(), handlers.GetRecommendedBooks)
                 books.POST("/predict-price", handlers.PredictPrice)
