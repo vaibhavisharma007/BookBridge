@@ -60,7 +60,7 @@ function loadSellerBooks() {
             // Calculate average price
             const totalPrice = sellerBooks.reduce((sum, book) => sum + book.price, 0);
             const averagePrice = totalPrice / sellerBooks.length;
-            document.getElementById('average-price').textContent = `$${averagePrice.toFixed(2)}`;
+            document.getElementById('average-price').textContent = `₹${averagePrice.toFixed(2)}`;
             
             // Add books to table
             sellerBooks.forEach(book => {
@@ -108,7 +108,7 @@ function createBookRow(book) {
     row.innerHTML = `
         <td>${book.title}</td>
         <td>${book.author}</td>
-        <td>$${book.price.toFixed(2)}</td>
+        <td>₹${book.price.toFixed(2)}</td>
         <td><span class="badge ${statusBadgeClass}">${book.status}</span></td>
         <td>${dateStr}</td>
         <td>
@@ -340,8 +340,8 @@ function initializeAddBookForm() {
                 // Check if error is related to price cap
                 if (data.predicted_price) {
                     priceWarning.innerHTML = `
-                        Your price ($${price.toFixed(2)}) exceeds the fair market value ($${data.predicted_price.toFixed(2)}).
-                        Please reduce your price to at most $${data.predicted_price.toFixed(2)}.
+                        Your price (₹${price.toFixed(2)}) exceeds the fair market value (₹${data.predicted_price.toFixed(2)}).
+                        Please reduce your price to at most ₹${data.predicted_price.toFixed(2)}.
                     `;
                     priceWarning.style.display = 'block';
                 } else {

@@ -153,7 +153,7 @@ function createBookCard(book) {
             <div class="card-body">
                 <h5 class="card-title">${book.title}</h5>
                 <p class="card-text text-muted">${book.author}</p>
-                <p class="book-price">$${book.price.toFixed(2)}</p>
+                <p class="book-price">₹${book.price.toFixed(2)}</p>
                 <p class="book-seller">Seller: ${book.seller_username}</p>
                 <p class="card-text">
                     <small class="text-muted">
