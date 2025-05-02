@@ -112,25 +112,25 @@ class BookPricePredictor:
             'price': np.zeros(n_samples)
         }
         
-        # Set prices based on conditions and genres with some randomness
-        condition_values = {'New': 25, 'Like New': 20, 'Very Good': 15, 'Good': 10, 'Acceptable': 5, 'Poor': 2}
+        # Set prices based on conditions and genres with some randomness (prices in Rs.)
+        condition_values = {'New': 110, 'Like New': 85, 'Very Good': 65, 'Good': 50, 'Acceptable': 35, 'Poor': 20}
         # Set price multipliers by genre - educational books tend to be more expensive
         genre_multipliers = {
             # Fiction categories
-            'Fiction': 1.0, 'Romance': 0.9, 'Dystopian': 1.2, 'Fantasy': 1.3, 
-            'Political Satire': 1.1, 'Gothic': 1.15, 'Historical Fiction': 1.25,
-            'Adventure': 1.1, 'Philosophical Fiction': 1.3, 'Epic': 1.2,
-            'Satire': 1.05, 'Realist Fiction': 1.0, 'Modernist': 1.2, 
-            'Epic Poetry': 1.3, 'Magical Realism': 1.25, 'Tragedy': 1.1,
-            'Coming of Age': 0.95, 'Romantic': 0.9,
+            'Fiction': 1.1, 'Romance': 1.0, 'Dystopian': 1.3, 'Fantasy': 1.4, 
+            'Political Satire': 1.2, 'Gothic': 1.25, 'Historical Fiction': 1.35,
+            'Adventure': 1.2, 'Philosophical Fiction': 1.4, 'Epic': 1.3,
+            'Satire': 1.15, 'Realist Fiction': 1.1, 'Modernist': 1.3, 
+            'Epic Poetry': 1.4, 'Magical Realism': 1.35, 'Tragedy': 1.2,
+            'Coming of Age': 1.05, 'Romantic': 1.0,
             
             # Academic and educational subjects - typically higher priced
-            'Mathematics': 1.6, 'Physics': 1.7, 'Chemistry': 1.6, 'Biology': 1.5,
-            'English Literature': 1.4, 'Computer Science': 1.8, 'History': 1.4,
-            'Geography': 1.5, 'Economics': 1.6, 'Linguistics': 1.5,
-            'Psychology': 1.5, 'Sociology': 1.4, 'Political Science': 1.4,
-            'Philosophy': 1.3, 'Engineering': 1.8, 'Medicine': 2.0,
-            'Law': 1.9, 'Architecture': 1.7, 'Business': 1.5, 'Accountancy': 1.6
+            'Mathematics': 1.75, 'Physics': 1.85, 'Chemistry': 1.75, 'Biology': 1.65,
+            'English Literature': 1.55, 'Computer Science': 1.95, 'History': 1.55,
+            'Geography': 1.65, 'Economics': 1.75, 'Linguistics': 1.65,
+            'Psychology': 1.65, 'Sociology': 1.55, 'Political Science': 1.55,
+            'Philosophy': 1.45, 'Engineering': 1.95, 'Medicine': 2.15,
+            'Law': 2.05, 'Architecture': 1.85, 'Business': 1.65, 'Accountancy': 1.75
         }
         
         for i in range(n_samples):
@@ -235,8 +235,8 @@ class BookPricePredictor:
         random_factor = np.random.uniform(0.95, 1.05)
         predicted_price *= random_factor
         
-        # Ensure a minimum price
-        predicted_price = max(5.0, predicted_price)
+        # Ensure a minimum price (minimum price for used books is 20 Rs)
+        predicted_price = max(20.0, predicted_price)
         
         return round(predicted_price, 2)
         
