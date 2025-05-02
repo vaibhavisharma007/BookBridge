@@ -948,53 +948,88 @@ function initBookRecommendationChatbot() {
     // Find all book assistant containers in the page
     const containers = document.querySelectorAll('.book-assistant-container');
     if (containers.length === 0) {
+        console.log('No book assistant containers found');
         return; // No containers found, nothing to do
     }
     
     console.log('Found', containers.length, 'book assistant containers');
     
-    containers.forEach((container, index) => {
-        try {
-            // Clear previous content
-            container.innerHTML = '';
-            
-            // Create a new Deep Chat element for this container
-            const chatbotElement = document.createElement('deep-chat');
-            
-            // Configure the chatbot
-            chatbotElement.style.height = '400px';
-            chatbotElement.style.width = '100%';
-            chatbotElement.style.border = '1px solid #e9ecef';
-            chatbotElement.style.borderRadius = '0.25rem';
-            chatbotElement.classList.add('book-assistant');
-            chatbotElement.id = `book-assistant-${index}`;
-            
-            // Set up the connection to the API
-            chatbotElement.setAttribute('directConnection', 'true');
-            chatbotElement.setAttribute('requestUrl', '/api/chatbot');
-            
-            // Welcome message
-            chatbotElement.setAttribute('initialMessages', JSON.stringify([
-                { role: 'assistant', text: 'Hello! I\'m the BookResell Assistant. How can I help you find books today?' }
-            ]));
-            
-            // Add authentication if available
-            if (isAuthenticated()) {
-                const token = localStorage.getItem('token');
-                chatbotElement.setAttribute('requestHeaders', JSON.stringify({
-                    'Authorization': `Bearer ${token}`
-                }));
+    // Define the initialization logic that will run after Deep Chat library is fully loaded
+    const initializeDeepChat = () => {
+        containers.forEach((container, index) => {
+            try {
+                console.log(`Initializing Deep Chat in container #${index}: ${container.id}`);
+                
+                // Check if this container already has a Deep Chat element
+                const existingChat = container.querySelector('deep-chat');
+                if (existingChat) {
+                    console.log('Deep Chat already exists in this container, skipping');
+                    return;
+                }
+                
+                // Clear previous content
+                container.innerHTML = '';
+                
+                // Create a new Deep Chat element for this container
+                const chatbotElement = document.createElement('deep-chat');
+                
+                // Configure the chatbot
+                chatbotElement.style.height = '400px';
+                chatbotElement.style.width = '100%';
+                chatbotElement.style.border = '1px solid #e9ecef';
+                chatbotElement.style.borderRadius = '0.25rem';
+                chatbotElement.classList.add('book-assistant');
+                chatbotElement.id = `book-assistant-${container.id || index}`;
+                
+                // Set up the connection to the API
+                chatbotElement.setAttribute('directConnection', 'true');
+                chatbotElement.setAttribute('requestUrl', '/api/chatbot');
+                
+                // Welcome message
+                const welcomeMessage = [
+                    { role: 'assistant', text: 'Hello! I\'m the BookResell Assistant. How can I help you find books today?' }
+                ];
+                chatbotElement.initialMessages = welcomeMessage;
+                
+                // Add authentication if available
+                if (isAuthenticated()) {
+                    const token = localStorage.getItem('token');
+                    chatbotElement.requestHeaders = {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    };
+                }
+                
+                // Add to the DOM
+                container.appendChild(chatbotElement);
+                
+                console.log('Successfully initialized book assistant in container', container.id || index);
+            } catch (error) {
+                console.error('Error initializing book assistant in container', index, error);
+                container.innerHTML = '<div class="alert alert-danger">Failed to load book assistant. Please refresh the page.</div>';
             }
-            
-            // Add to the DOM
-            container.appendChild(chatbotElement);
-            
-            console.log('Initialized book assistant in container', index);
-        } catch (error) {
-            console.error('Error initializing book assistant in container', index, error);
-            container.innerHTML = '<div class="alert alert-danger">Failed to load book assistant. Please refresh the page.</div>';
-        }
-    });
+        });
+    };
+    
+    // Make sure the global Deep Chat component is loaded before initializing
+    if (typeof DeepChat !== 'undefined' || typeof window.DeepChat !== 'undefined' || customElements.get('deep-chat')) {
+        console.log('Deep Chat library detected, initializing...');
+        initializeDeepChat();
+    } else {
+        console.log('Deep Chat library not yet loaded, waiting...');
+        // If not loaded, retry after a short delay
+        setTimeout(() => {
+            console.log('Retrying Deep Chat initialization...');
+            if (typeof DeepChat !== 'undefined' || typeof window.DeepChat !== 'undefined' || customElements.get('deep-chat')) {
+                initializeDeepChat();
+            } else {
+                console.error('Deep Chat library still not available after delay');
+                containers.forEach(container => {
+                    container.innerHTML = '<div class="alert alert-warning">Chat component is loading. If it doesn\'t appear, please refresh the page.</div>';
+                });
+            }
+        }, 1000);
+    }
 }
 
 // Initialize chat when DOM is loaded
