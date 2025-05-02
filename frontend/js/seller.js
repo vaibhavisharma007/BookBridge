@@ -294,9 +294,85 @@ function initializeAddBookForm() {
     const addBookForm = document.getElementById('add-book-form');
     const errorMessage = document.getElementById('add-book-error');
     const priceWarning = document.getElementById('price-warning');
+    const priceGuidance = document.getElementById('price-guidance');
     
     if (!submitBookBtn || !addBookForm) return;
     
+    // Function to get price prediction
+    function getPricePrediction() {
+        // Get current form values
+        const title = document.getElementById('book-title').value.trim();
+        const author = document.getElementById('book-author').value.trim();
+        const genre = document.getElementById('book-genre').value;
+        const condition = document.getElementById('book-condition').value;
+        
+        // Only proceed if all required fields are filled
+        if (!title || !author || !genre || !condition) {
+            return;
+        }
+        
+        // Show loading in price guidance
+        priceGuidance.innerHTML = '<span class="text-info"><i data-feather="loader" class="loader-icon"></i> Calculating suggested price...</span>';
+        priceGuidance.style.display = 'block';
+        
+        // Replace feather icons
+        feather.replace();
+        
+        // Add a spinning animation to the loader icon
+        document.querySelector('.loader-icon').classList.add('spin-animation');
+        
+        // Create prediction request object
+        const predictionRequest = {
+            title,
+            author,
+            genre,
+            condition
+        };
+        
+        // Call the prediction API endpoint
+        fetch('/api/books/predict-price', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...getAuthHeaders()
+            },
+            body: JSON.stringify(predictionRequest)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.predicted_price) {
+                // Show the predicted price guidance
+                priceGuidance.innerHTML = `
+                    <div class="mt-2">
+                        <span class="fw-bold">Suggested price: ₹${data.predicted_price.toFixed(2)}</span><br>
+                        <small class="text-muted">Based on ML analysis of similar books</small>
+                    </div>
+                `;
+                
+                // Update the price input
+                const priceInput = document.getElementById('book-price');
+                if (!priceInput.value) {
+                    priceInput.value = data.predicted_price.toFixed(2);
+                }
+            } else {
+                priceGuidance.innerHTML = '<span class="text-warning">Could not calculate suggested price</span>';
+            }
+        })
+        .catch(error => {
+            console.error('Error predicting price:', error);
+            priceGuidance.innerHTML = '<span class="text-danger">Error calculating price</span>';
+        });
+    }
+    
+    // Add event listeners to form fields for real-time price prediction
+    ['book-title', 'book-author', 'book-genre', 'book-condition'].forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            field.addEventListener('change', getPricePrediction);
+        }
+    });
+    
+    // Handle form submission
     submitBookBtn.addEventListener('click', function() {
         // Hide messages
         errorMessage.style.display = 'none';
@@ -357,6 +433,9 @@ function initializeAddBookForm() {
             
             // Reset form
             addBookForm.reset();
+            
+            // Hide guidance message
+            priceGuidance.style.display = 'none';
             
             // Show success message
             alert('Book added successfully!');
