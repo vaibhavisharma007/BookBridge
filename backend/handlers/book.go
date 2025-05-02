@@ -347,6 +347,112 @@ func ChatbotResponse(c *gin.Context) {
         })
 }
 
+// UpdateBook updates an existing book listing
+func UpdateBook(c *gin.Context) {
+    // Get user ID from authentication
+    userID, _ := c.Get("userID")
+
+    // Get book ID from URL
+    bookID, err := strconv.Atoi(c.Param("id"))
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid book ID"})
+        return
+    }
+
+    // Check if the book exists and belongs to the current user
+    var sellerID int
+    err = db.DB.QueryRow("SELECT seller_id FROM books WHERE id = $1", bookID).Scan(&sellerID)
+    if err != nil {
+        if err == sql.ErrNoRows {
+            c.JSON(http.StatusNotFound, gin.H{"error": "Book not found"})
+        } else {
+            log.Printf("Database error checking book ownership: %v", err)
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to verify book ownership"})
+        }
+        return
+    }
+
+    // Verify ownership
+    if sellerID != userID.(int) {
+        c.JSON(http.StatusForbidden, gin.H{"error": "You don't have permission to edit this book"})
+        return
+    }
+
+    // Parse request body
+    var input struct {
+        Title       string  `json:"title"`
+        Author      string  `json:"author"`
+        Description string  `json:"description"`
+        Price       float64 `json:"price"`
+        ImageURL    string  `json:"image_url"`
+        Genre       string  `json:"genre"`
+        Condition   string  `json:"condition"`
+    }
+
+    if err := c.ShouldBindJSON(&input); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input data"})
+        return
+    }
+
+    // Only update image URL if one is provided
+    var updateQuery string
+    var params []interface{}
+
+    if input.ImageURL != "" {
+        updateQuery = `
+            UPDATE books 
+            SET title = $1, author = $2, description = $3, price = $4, 
+                image_url = $5, genre = $6, condition = $7 
+            WHERE id = $8
+        `
+        params = append(params, input.Title, input.Author, input.Description, input.Price, 
+                        input.ImageURL, input.Genre, input.Condition, bookID)
+    } else {
+        updateQuery = `
+            UPDATE books 
+            SET title = $1, author = $2, description = $3, price = $4, 
+                genre = $5, condition = $6 
+            WHERE id = $7
+        `
+        params = append(params, input.Title, input.Author, input.Description, 
+                        input.Price, input.Genre, input.Condition, bookID)
+    }
+
+    // Execute update
+    _, err = db.DB.Exec(updateQuery, params...)
+    if err != nil {
+        log.Printf("Database error updating book: %v", err)
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update book"})
+        return
+    }
+
+    // Fetch updated book details
+    var book models.Book
+    err = db.DB.QueryRow(`
+        SELECT b.id, b.seller_id, u.username, b.title, b.author, b.description, 
+               b.price, b.image_url, b.genre, b.condition, b.status, b.created_at
+        FROM books b
+        JOIN users u ON b.seller_id = u.id
+        WHERE b.id = $1`,
+        bookID,
+    ).Scan(
+        &book.ID, &book.SellerID, &book.SellerUsername, &book.Title, &book.Author,
+        &book.Description, &book.Price, &book.ImageURL, &book.Genre, &book.Condition,
+        &book.Status, &book.CreatedAt,
+    )
+
+    if err != nil {
+        log.Printf("Error fetching updated book: %v", err)
+        c.JSON(http.StatusOK, gin.H{
+            "message": "Book updated successfully",
+            "id":      bookID,
+        })
+        return
+    }
+
+    c.JSON(http.StatusOK, book)
+}
+
 // Helper function to predict book price using ML service
 func getPredictedPrice(book models.BookInput) (float64, error) {
         // Prepare request to ML service
