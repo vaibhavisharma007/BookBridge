@@ -63,6 +63,7 @@ function updateAuthUI() {
     const unauthenticatedElements = document.querySelectorAll('.unauthenticated');
     const sellerOnlyElements = document.querySelectorAll('.seller-only');
     const buyerOnlyElements = document.querySelectorAll('.buyer-only');
+    const adminOnlyElements = document.querySelectorAll('.admin-only');
     
     if (user) {
         // User is authenticated
@@ -79,9 +80,15 @@ function updateAuthUI() {
         if (user.role === 'seller') {
             sellerOnlyElements.forEach(el => el.style.display = '');
             buyerOnlyElements.forEach(el => el.style.display = 'none');
+            adminOnlyElements.forEach(el => el.style.display = 'none');
+        } else if (user.role === 'admin') {
+            sellerOnlyElements.forEach(el => el.style.display = '');
+            buyerOnlyElements.forEach(el => el.style.display = '');
+            adminOnlyElements.forEach(el => el.style.display = '');
         } else {
             sellerOnlyElements.forEach(el => el.style.display = 'none');
             buyerOnlyElements.forEach(el => el.style.display = '');
+            adminOnlyElements.forEach(el => el.style.display = 'none');
         }
     } else {
         // User is not authenticated
@@ -89,6 +96,7 @@ function updateAuthUI() {
         unauthenticatedElements.forEach(el => el.style.display = '');
         sellerOnlyElements.forEach(el => el.style.display = 'none');
         buyerOnlyElements.forEach(el => el.style.display = 'none');
+        adminOnlyElements.forEach(el => el.style.display = 'none');
     }
 }
 
