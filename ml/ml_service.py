@@ -165,6 +165,35 @@ class BookRecommender:
         self.tfidf_matrix = None
         self.tfidf_vectorizer = None
         self.books_loaded = False
+        self.collaborative_model_loaded = False
+        self.popular_df = None
+        self.pt = None
+        self.similarity_scores = None
+        
+        # Try to load the collaborative model files
+        self._load_collaborative_model()
+        
+    def _load_collaborative_model(self):
+        """Load the collaborative filtering model from pickle files"""
+        try:
+            # Load the pickle files from the data directory
+            with open("data/books.pkl", "rb") as f:
+                self.collaborative_books = pickle.load(f)
+            
+            with open("data/popular.pkl", "rb") as f:
+                self.popular_df = pickle.load(f)
+            
+            with open("data/pt.pkl", "rb") as f:
+                self.pt = pickle.load(f)
+            
+            with open("data/similarity_scores.pkl", "rb") as f:
+                self.similarity_scores = pickle.load(f)
+            
+            self.collaborative_model_loaded = True
+            print("Collaborative model loaded successfully!")
+        except Exception as e:
+            print(f"Error loading collaborative model: {e}")
+            self.collaborative_model_loaded = False
         
     def load_books_from_db(self):
         # Connect to the PostgreSQL database
@@ -258,6 +287,70 @@ class BookRecommender:
         self.tfidf_matrix = self.tfidf_vectorizer.fit_transform(self.books_df['content'])
         
         self.books_loaded = True
+    
+    def get_collaborative_recommendations(self, book_title, num_recommendations=5):
+        """
+        Get recommendations based on collaborative filtering model
+        """
+        if not self.collaborative_model_loaded:
+            print("Collaborative model not loaded, falling back to content-based recommendations")
+            return []
+        
+        try:
+            # Find the book index in the pivot table
+            if book_title not in self.pt.index:
+                # If book not found, return popular books
+                return self.get_trending_books(num_recommendations)
+                
+            idx = np.where(self.pt.index == book_title)[0][0]
+            
+            # Get similar items based on similarity scores
+            similar_items = sorted(list(enumerate(self.similarity_scores[idx])), key=lambda x: x[1], reverse=True)[1:num_recommendations+1]
+            
+            # Format the recommendations
+            recommendations = []
+            for i in similar_items:
+                item = {}
+                temp_df = self.collaborative_books[self.collaborative_books['Book-Title'] == self.pt.index[i[0]]]
+                # Convert to our API format
+                item['title'] = temp_df['Book-Title'].values[0]
+                item['author'] = temp_df['Book-Author'].values[0]
+                item['image_url'] = temp_df['Image-URL-M'].values[0] if 'Image-URL-M' in temp_df.columns else None
+                recommendations.append(item)
+                
+            return recommendations
+        except Exception as e:
+            print(f"Error getting collaborative recommendations: {e}")
+            return self.get_trending_books(num_recommendations)
+    
+    def get_trending_books(self, num_recommendations=50):
+        """
+        Get the top trending books based on the popular.pkl file
+        """
+        if not self.collaborative_model_loaded or self.popular_df is None:
+            print("Trending books data not available")
+            return []
+            
+        try:
+            # Get the top N books
+            trending = self.popular_df.head(num_recommendations)
+            
+            # Format the response
+            recommendations = []
+            for _, row in trending.iterrows():
+                book = {
+                    'title': row['Book-Title'],
+                    'author': row['Book-Author'],
+                    'image_url': row['Image-URL-M'],
+                    'ratings_count': int(row['number_of_ratings']),
+                    'avg_rating': float(row['avg_rating'])
+                }
+                recommendations.append(book)
+                
+            return recommendations
+        except Exception as e:
+            print(f"Error getting trending books: {e}")
+            return []
     
     def get_content_based_recommendations(self, user_id, num_recommendations=5):
         """
