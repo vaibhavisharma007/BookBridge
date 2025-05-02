@@ -416,6 +416,29 @@ func getRecommendations(userID int) ([]models.Book, error) {
         return recommendations, nil
 }
 
+// PredictPrice returns a book price prediction based on ML model
+func PredictPrice(c *gin.Context) {
+        // Parse input
+        var input models.BookInput
+        if err := c.ShouldBindJSON(&input); err != nil {
+                c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                return
+        }
+
+        // Call ML service to predict price
+        predictedPrice, err := getPredictedPrice(input)
+        if err != nil {
+                log.Printf("Error predicting price: %v", err)
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to predict book price"})
+                return
+        }
+
+        // Return the predicted price
+        c.JSON(http.StatusOK, models.PredictPriceResponse{
+                PredictedPrice: predictedPrice,
+        })
+}
+
 // Fallback recommendation method if ML service is unavailable
 func getFallbackRecommendations() ([]models.Book, error) {
         rows, err := db.DB.Query(`

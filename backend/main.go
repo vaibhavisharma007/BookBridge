@@ -109,6 +109,7 @@ func main() {
                 books.POST("", middleware.AuthMiddleware(), handlers.AddBook)
                 books.DELETE("/:id", middleware.AuthMiddleware(), handlers.DeleteBook)
                 books.GET("/recommendations", middleware.AuthMiddleware(), handlers.GetRecommendedBooks)
+                books.POST("/predict-price", handlers.PredictPrice)
         }
 
         // Chatbot route
