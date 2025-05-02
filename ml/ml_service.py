@@ -177,17 +177,20 @@ class BookRecommender:
     def _load_collaborative_model(self):
         """Load the collaborative filtering model from pickle files"""
         try:
-            # Load the pickle files from the ml/pickles directory
-            with open("ml/pickles/books.pkl", "rb") as f:
+            # Get the current directory path
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            
+            # Load the pickle files using absolute paths
+            with open(os.path.join(current_dir, "compatible_pickles/books.pkl"), "rb") as f:
                 self.collaborative_books = pickle.load(f)
             
-            with open("ml/pickles/popular.pkl", "rb") as f:
+            with open(os.path.join(current_dir, "compatible_pickles/popular.pkl"), "rb") as f:
                 self.popular_df = pickle.load(f)
             
-            with open("ml/pickles/pt.pkl", "rb") as f:
+            with open(os.path.join(current_dir, "compatible_pickles/pt.pkl"), "rb") as f:
                 self.pt = pickle.load(f)
             
-            with open("ml/pickles/similarity_scores.pkl", "rb") as f:
+            with open(os.path.join(current_dir, "compatible_pickles/similarity_scores.pkl"), "rb") as f:
                 self.similarity_scores = pickle.load(f)
             
             self.collaborative_model_loaded = True
@@ -298,12 +301,25 @@ class BookRecommender:
             return []
         
         try:
+            # Print debug info
+            print(f"Collaborative books data type: {type(self.collaborative_books)}")
+            print(f"PT data type: {type(self.pt)}")
+            if hasattr(self.pt, 'index'):
+                print(f"PT index sample (first 5): {list(self.pt.index[:5])}")
+            print(f"Similarity scores shape: {self.similarity_scores.shape}")
+            
             # Find the book index in the pivot table
-            if book_title not in self.pt.index:
+            if not hasattr(self.pt, 'index') or book_title not in self.pt.index:
+                print(f"Book title {book_title} not found in pivot table index")
                 # If book not found, return popular books
                 return self.get_trending_books(num_recommendations)
                 
-            idx = np.where(self.pt.index == book_title)[0][0]
+            # Find the index of the book in the pivot table
+            try:
+                idx = np.where(self.pt.index == book_title)[0][0]
+            except IndexError as e:
+                print(f"Error finding book index: {e}")
+                return self.get_trending_books(num_recommendations)
             
             # Get similar items based on similarity scores
             similar_items = sorted(list(enumerate(self.similarity_scores[idx])), key=lambda x: x[1], reverse=True)[1:num_recommendations+1]
@@ -311,13 +327,36 @@ class BookRecommender:
             # Format the recommendations
             recommendations = []
             for i in similar_items:
-                item = {}
-                temp_df = self.collaborative_books[self.collaborative_books['Book-Title'] == self.pt.index[i[0]]]
-                # Convert to our API format
-                item['title'] = temp_df['Book-Title'].values[0]
-                item['author'] = temp_df['Book-Author'].values[0]
-                item['image_url'] = temp_df['Image-URL-M'].values[0] if 'Image-URL-M' in temp_df.columns else None
-                recommendations.append(item)
+                try:
+                    item = {}
+                    book_title_index = self.pt.index[i[0]]
+                    
+                    # Print columns to help with debugging
+                    if len(recommendations) == 0:
+                        print(f"Collaborative books columns: {self.collaborative_books.columns}")
+                    
+                    # Get book details
+                    if 'Book-Title' in self.collaborative_books.columns:
+                        temp_df = self.collaborative_books[self.collaborative_books['Book-Title'] == book_title_index]
+                        if not temp_df.empty:
+                            item['title'] = temp_df['Book-Title'].values[0]
+                            item['author'] = temp_df['Book-Author'].values[0] if 'Book-Author' in temp_df.columns else 'Unknown'
+                            item['image_url'] = temp_df['Image-URL-M'].values[0] if 'Image-URL-M' in temp_df.columns else None
+                        else:
+                            # If book not found, use index as title
+                            item['title'] = book_title_index
+                            item['author'] = 'Unknown'
+                            item['image_url'] = None
+                    else:
+                        # Fallback if column names don't match
+                        item['title'] = book_title_index
+                        item['author'] = 'Unknown'
+                        item['image_url'] = None
+                    
+                    recommendations.append(item)
+                except Exception as e:
+                    print(f"Error processing recommendation item: {e}")
+                    continue
                 
             return recommendations
         except Exception as e:
@@ -336,16 +375,47 @@ class BookRecommender:
             # Get the top N books
             trending = self.popular_df.head(num_recommendations)
             
+            # Print DataFrame columns to help with debugging
+            print(f"Popular DataFrame columns: {trending.columns}")
+            
             # Format the response
             recommendations = []
             for _, row in trending.iterrows():
-                book = {
-                    'title': row['Book-Title'],
-                    'author': row['Book-Author'],
-                    'image_url': row['Image-URL-M'],
-                    'ratings_count': int(row['number_of_ratings']),
-                    'avg_rating': float(row['avg_rating'])
-                }
+                book = {}
+                # Map titles dynamically
+                if 'Book-Title' in trending.columns:
+                    book['title'] = row['Book-Title']
+                elif 'title' in trending.columns:
+                    book['title'] = row['title']
+                
+                # Map authors dynamically
+                if 'Book-Author' in trending.columns:
+                    book['author'] = row['Book-Author']
+                elif 'author' in trending.columns:
+                    book['author'] = row['author']
+                
+                # Map image URLs dynamically
+                if 'Image-URL-M' in trending.columns:
+                    book['image_url'] = row['Image-URL-M']
+                elif 'image_url_m' in trending.columns:
+                    book['image_url'] = row['image_url_m']
+                else:
+                    book['image_url'] = None
+                
+                # Map ratings count dynamically
+                if 'number_of_ratings' in trending.columns:
+                    book['ratings_count'] = int(row['number_of_ratings'])
+                elif 'num_ratings' in trending.columns:
+                    book['ratings_count'] = int(row['num_ratings'])
+                else:
+                    book['ratings_count'] = 0
+                
+                # Map average rating dynamically
+                if 'avg_rating' in trending.columns:
+                    book['avg_rating'] = float(row['avg_rating'])
+                else:
+                    book['avg_rating'] = 0.0
+                
                 recommendations.append(book)
                 
             return recommendations
