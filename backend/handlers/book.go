@@ -76,8 +76,10 @@ func GetAllBooks(c *gin.Context) {
         }
         defer rows.Close()
 
+        // Initialize an empty array to avoid null JSON response
+        books := []models.Book{}
+        
         // Parse results
-        var books []models.Book
         for rows.Next() {
                 var book models.Book
                 if err := rows.Scan(
@@ -97,6 +99,7 @@ func GetAllBooks(c *gin.Context) {
                 return
         }
 
+        // Even if no books found, this will return an empty array instead of null
         c.JSON(http.StatusOK, books)
 }
 
@@ -316,8 +319,10 @@ func ChatbotResponse(c *gin.Context) {
         }
         defer rows.Close()
 
+        // Initialize empty array to avoid null response
+        books := []models.Book{}
+        
         // Parse results
-        var books []models.Book
         for rows.Next() {
                 var book models.Book
                 if err := rows.Scan(
@@ -382,20 +387,29 @@ func getRecommendations(userID int) ([]models.Book, error) {
         
         requestJSON, err := json.Marshal(requestData)
         if err != nil {
-                return nil, err
+                log.Printf("Error marshaling recommendation request: %v", err)
+                return getFallbackRecommendations()
         }
 
         // Call recommender service
         resp, err := http.Post("http://localhost:5001/recommend", "application/json", bytes.NewBuffer(requestJSON))
         if err != nil {
                 // Fallback to database query for top books if service is unavailable
+                log.Printf("Error connecting to recommendation service: %v", err)
                 return getFallbackRecommendations()
         }
         defer resp.Body.Close()
 
+        // Check response status
+        if resp.StatusCode != http.StatusOK {
+                log.Printf("Recommendation service returned non-OK status: %d", resp.StatusCode)
+                return getFallbackRecommendations()
+        }
+
         // Parse response
-        var recommendations []models.Book
+        recommendations := []models.Book{} // Initialize as empty array
         if err := json.NewDecoder(resp.Body).Decode(&recommendations); err != nil {
+                log.Printf("Error decoding recommendation response: %v", err)
                 return getFallbackRecommendations()
         }
 
@@ -415,11 +429,14 @@ func getFallbackRecommendations() ([]models.Book, error) {
         )
         
         if err != nil {
-                return nil, err
+                log.Printf("Database error in fallback recommendations: %v", err)
+                return []models.Book{}, nil
         }
         defer rows.Close()
 
-        var books []models.Book
+        // Initialize an empty array to avoid null response
+        books := []models.Book{}
+        
         for rows.Next() {
                 var book models.Book
                 if err := rows.Scan(
