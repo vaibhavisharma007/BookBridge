@@ -4,92 +4,64 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shopping Cart - BookResell</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="css/style.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/cart.css">
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="index.html">BookResell</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="index.html">Home</a>
-                    </li>
-                    <li class="nav-item seller-only" style="display: none;">
-                        <a class="nav-link" href="seller-dashboard.html">Seller Dashboard</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="chat.html">Messages</a>
-                    </li>
-                </ul>
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="cart.html">
-                            <i data-feather="shopping-cart"></i>
-                            <span id="cart-count" class="badge bg-danger rounded-pill">0</span>
-                        </a>
-                    </li>
-                    <li class="nav-item authenticated" style="display: none;">
-                        <a class="nav-link" href="#" id="logout-link">Logout</a>
-                    </li>
-                    <li class="nav-item unauthenticated" style="display: none;">
-                        <a class="nav-link" href="login.html">Login</a>
-                    </li>
-                    <li class="nav-item unauthenticated" style="display: none;">
-                        <a class="nav-link" href="register.html">Register</a>
-                    </li>
-                </ul>
+    <header>
+        <nav>
+            <div class="logo">
+                <a href="/">BookResell</a>
             </div>
-        </div>
-    </nav>
+            <ul class="nav-links">
+                <li><a href="/">Home</a></li>
+                <li class="auth-required seller-only"><a href="/seller-dashboard.html">Seller Dashboard</a></li>
+                <li class="auth-required"><a href="/chat.html">Messages</a></li>
+                <li class="auth-required"><a href="/cart.html" class="active">Cart <span id="cart-count" class="cart-badge">0</span></a></li>
+                <li class="auth-not-required"><a href="/login.html">Login</a></li>
+                <li class="auth-not-required"><a href="/register.html">Register</a></li>
+                <li class="auth-required"><a href="#" id="logout-btn">Logout</a></li>
+            </ul>
+        </nav>
+    </header>
 
-    <div class="container mt-4">
-        <h2 class="mb-4">Shopping Cart</h2>
-        
-        <div class="row">
-            <div class="col-md-9">
-                <!-- Cart items will be loaded here -->
-                <div id="cart-items">
-                    <div class="text-center py-5">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <main class="container">
+        <section class="cart-section">
+            <h1>Shopping Cart</h1>
             
-            <div class="col-md-3" id="checkout-container" style="display: none;">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Order Summary</h5>
-                        <hr>
-                        <div class="d-flex justify-content-between mb-3">
-                            <span>Total:</span>
-                            <strong id="cart-total">₹0.00</strong>
-                        </div>
-                        <button id="checkout-button" class="btn btn-primary w-100">Proceed to Checkout</button>
+            <div id="cart-container">
+                <!-- Cart items will be added here dynamically -->
+                <div id="empty-cart-message" style="display: none;">
+                    <p>Your cart is empty. <a href="/">Browse books</a> to add items to your cart.</p>
+                </div>
+
+                <div id="cart-items">
+                    <!-- Cart items will be rendered here -->
+                </div>
+
+                <div id="cart-summary" style="display: none;">
+                    <div class="cart-total">
+                        <h3>Total:</h3>
+                        <h3 id="cart-total-amount">₹0.00</h3>
+                    </div>
+                    <div class="cart-actions">
+                        <a href="/" class="secondary-button">Continue Shopping</a>
+                        <a href="/checkout.html" class="primary-button">Proceed to Checkout</a>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
+        </section>
+    </main>
 
-    <footer class="footer mt-auto py-3 bg-light">
-        <div class="container text-center">
-            <span class="text-muted">© 2023 BookResell - A marketplace for pre-loved books</span>
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 BookResell - All rights reserved</p>
         </div>
     </footer>
-    
-    <!-- Toast container for notifications -->
-    <div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index: 1050;"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/cart.js"></script>
+    <div id="toast-container"></div>
+
+    <script src="/js/auth.js"></script>
+    <script src="/js/cart.js"></script>
 </body>
 </html>

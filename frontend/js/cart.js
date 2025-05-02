@@ -1,11 +1,20 @@
 /**
- * Shopping cart functionality for BookResell
+ * Cart functionality for BookResell
  */
 
-// Initialize cart if not already in local storage
+// Initialize cart when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    initializeCart();
+    loadCartItems();
+    updateCartCount();
+});
+
+/**
+ * Initialize the cart in local storage if it doesn't exist
+ */
 function initializeCart() {
     if (!localStorage.getItem('cart')) {
-        localStorage.setItem('cart', JSON.stringify([])); 
+        localStorage.setItem('cart', JSON.stringify([]));
     }
 }
 
@@ -14,39 +23,43 @@ function initializeCart() {
  * @param {Object} book - Book to add to cart
  */
 function addToCart(book) {
-    initializeCart();
+    if (!book || !book.id || !book.title || !book.price) {
+        console.error('Invalid book data for cart');
+        return;
+    }
     
-    // Get current cart
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    // Add a default image if none provided
+    if (!book.image) {
+        book.image = '/images/book-placeholder.jpg';
+    }
     
-    // Check if book is already in cart
-    const existingIndex = cart.findIndex(item => item.id === book.id);
+    // Get the current cart
+    const cart = JSON.parse(localStorage.getItem('cart')) || [];
     
-    if (existingIndex >= 0) {
-        // Book already in cart, increase quantity
-        cart[existingIndex].quantity += 1;
+    // Check if the book is already in the cart
+    const existingItemIndex = cart.findIndex(item => item.id === book.id);
+    
+    if (existingItemIndex >= 0) {
+        // Increment quantity if the book is already in the cart
+        cart[existingItemIndex].quantity += 1;
     } else {
-        // Add book to cart with quantity 1
+        // Add the book to the cart with quantity 1
         cart.push({
             id: book.id,
             title: book.title,
-            author: book.author,
+            author: book.author || 'Unknown',
             price: book.price,
-            seller_id: book.seller_id,
-            seller_username: book.seller_username,
-            image_url: book.image_url,
+            image: book.image,
             quantity: 1
         });
     }
     
-    // Update cart in local storage
+    // Save the updated cart
     localStorage.setItem('cart', JSON.stringify(cart));
     
-    // Update cart count in UI
+    // Update UI
     updateCartCount();
-    
-    // Show success message
-    showToast('Book added to cart successfully!');
+    showToast('Book added to cart!');
 }
 
 /**
@@ -54,22 +67,19 @@ function addToCart(book) {
  * @param {Number} bookId - ID of book to remove
  */
 function removeFromCart(bookId) {
-    // Get current cart
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    // Get the current cart
+    const cart = JSON.parse(localStorage.getItem('cart')) || [];
     
     // Filter out the book to remove
     const updatedCart = cart.filter(item => item.id !== bookId);
     
-    // Update cart in local storage
+    // Save the updated cart
     localStorage.setItem('cart', JSON.stringify(updatedCart));
     
-    // Update cart count
+    // Update UI
     updateCartCount();
-    
-    // Reload cart page if we're on it
-    if (window.location.pathname.includes('cart.html')) {
-        loadCartItems();
-    }
+    loadCartItems();
+    showToast('Book removed from cart');
 }
 
 /**
@@ -78,137 +88,119 @@ function removeFromCart(bookId) {
  * @param {Number} newQuantity - New quantity
  */
 function updateCartItemQuantity(bookId, newQuantity) {
-    // Get current cart
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    // Validate the new quantity
+    newQuantity = parseInt(newQuantity);
+    if (isNaN(newQuantity) || newQuantity < 1) {
+        newQuantity = 1;
+    }
     
-    // Find the book
+    // Get the current cart
+    const cart = JSON.parse(localStorage.getItem('cart')) || [];
+    
+    // Find the book to update
     const itemIndex = cart.findIndex(item => item.id === bookId);
     
     if (itemIndex >= 0) {
-        if (newQuantity <= 0) {
-            // Remove item if quantity is 0 or less
-            removeFromCart(bookId);
-        } else {
-            // Update quantity
-            cart[itemIndex].quantity = newQuantity;
-            
-            // Update cart in local storage
-            localStorage.setItem('cart', JSON.stringify(cart));
-            
-            // Reload cart page if we're on it
-            if (window.location.pathname.includes('cart.html')) {
-                loadCartItems();
-            }
-        }
+        // Update the quantity
+        cart[itemIndex].quantity = newQuantity;
+        
+        // Save the updated cart
+        localStorage.setItem('cart', JSON.stringify(cart));
+        
+        // Update UI
+        updateCartCount();
+        loadCartItems();
     }
-    
-    // Update cart count
-    updateCartCount();
 }
 
 /**
  * Update the cart count indicator in the UI
  */
 function updateCartCount() {
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
+    const cart = JSON.parse(localStorage.getItem('cart')) || [];
+    const cartCountElements = document.querySelectorAll('#cart-count');
     
-    // Update the cart count in the navbar
-    const cartCountElement = document.getElementById('cart-count');
-    if (cartCountElement) {
-        cartCountElement.textContent = cartCount;
+    // Calculate total items (sum of quantities)
+    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+    
+    // Update all cart count indicators
+    cartCountElements.forEach(element => {
+        element.textContent = totalItems;
         
-        // Show/hide the count badge
-        if (cartCount > 0) {
-            cartCountElement.style.display = 'inline-block';
+        // Show/hide based on count
+        if (totalItems > 0) {
+            element.style.display = 'inline-block';
         } else {
-            cartCountElement.style.display = 'none';
+            element.style.display = 'none';
         }
-    }
+    });
 }
 
 /**
  * Load and display cart items
  */
 function loadCartItems() {
-    const cartContainer = document.getElementById('cart-items');
-    if (!cartContainer) return;
+    const cart = JSON.parse(localStorage.getItem('cart')) || [];
+    const cartItemsContainer = document.getElementById('cart-items');
+    const emptycartMessage = document.getElementById('empty-cart-message');
+    const cartSummary = document.getElementById('cart-summary');
     
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    // Check if we're on the cart page
+    if (!cartItemsContainer) return;
+    
+    // Clear the cart items container
+    cartItemsContainer.innerHTML = '';
     
     if (cart.length === 0) {
-        // Cart is empty
-        cartContainer.innerHTML = `
-            <div class="text-center py-5">
-                <i data-feather="shopping-cart" style="width: 48px; height: 48px;" class="text-muted mb-3"></i>
-                <h5>Your cart is empty</h5>
-                <p class="text-muted">Browse our collection and add books to your cart.</p>
-                <a href="index.html" class="btn btn-primary">Browse Books</a>
+        // Show empty cart message
+        emptycartMessage.style.display = 'block';
+        cartSummary.style.display = 'none';
+        return;
+    }
+    
+    // Hide empty cart message
+    emptycartMessage.style.display = 'none';
+    cartSummary.style.display = 'block';
+    
+    // Calculate the total
+    let totalAmount = 0;
+    
+    // Display each cart item
+    cart.forEach(item => {
+        const itemTotal = item.price * item.quantity;
+        totalAmount += itemTotal;
+        
+        const cartItemElement = document.createElement('div');
+        cartItemElement.className = 'cart-item';
+        cartItemElement.innerHTML = `
+            <div class="cart-item-details">
+                <img src="${item.image}" alt="${item.title}" class="cart-item-image">
+                <div class="cart-item-info">
+                    <h3>${item.title}</h3>
+                    <p>Author: ${item.author}</p>
+                    <p class="cart-item-price">₹${item.price.toFixed(2)}</p>
+                </div>
+            </div>
+            <div class="cart-item-actions">
+                <div class="quantity-control">
+                    <button class="quantity-btn" onclick="updateCartItemQuantity(${item.id}, ${item.quantity - 1})">-</button>
+                    <input type="number" value="${item.quantity}" min="1" class="quantity-input" 
+                           onchange="updateCartItemQuantity(${item.id}, this.value)">
+                    <button class="quantity-btn" onclick="updateCartItemQuantity(${item.id}, ${item.quantity + 1})">+</button>
+                </div>
+                <span class="item-total">₹${itemTotal.toFixed(2)}</span>
+                <button class="remove-item-btn" onclick="removeFromCart(${item.id})">Remove</button>
             </div>
         `;
         
-        // Hide checkout button and total
-        document.getElementById('checkout-container').style.display = 'none';
-    } else {
-        // Render cart items
-        let cartHTML = '';
-        let totalAmount = 0;
-        
-        cart.forEach(item => {
-            const itemTotal = item.price * item.quantity;
-            totalAmount += itemTotal;
-            
-            cartHTML += `
-                <div class="card mb-3">
-                    <div class="card-body">
-                        <div class="row align-items-center">
-                            <div class="col-md-2">
-                                <img src="${item.image_url || 'images/book-placeholder.jpg'}" class="img-fluid rounded" alt="${item.title}">
-                            </div>
-                            <div class="col-md-4">
-                                <h5 class="card-title">${item.title}</h5>
-                                <p class="card-text text-muted">by ${item.author}</p>
-                                <small class="text-muted">Seller: ${item.seller_username}</small>
-                            </div>
-                            <div class="col-md-2 text-center">
-                                <div class="input-group">
-                                    <button class="btn btn-outline-secondary btn-sm" type="button" onclick="updateCartItemQuantity(${item.id}, ${item.quantity-1})">
-                                        <i data-feather="minus"></i>
-                                    </button>
-                                    <input type="text" class="form-control form-control-sm text-center" value="${item.quantity}" readonly>
-                                    <button class="btn btn-outline-secondary btn-sm" type="button" onclick="updateCartItemQuantity(${item.id}, ${item.quantity+1})">
-                                        <i data-feather="plus"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="col-md-2 text-center">
-                                <h6>₹${item.price.toFixed(2)}</h6>
-                            </div>
-                            <div class="col-md-1 text-center">
-                                <h6>₹${itemTotal.toFixed(2)}</h6>
-                            </div>
-                            <div class="col-md-1 text-end">
-                                <button class="btn btn-link text-danger" onclick="removeFromCart(${item.id})">
-                                    <i data-feather="trash-2"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        });
-        
-        cartContainer.innerHTML = cartHTML;
-        
-        // Update total amount
-        document.getElementById('cart-total').textContent = `₹${totalAmount.toFixed(2)}`;
-        
-        // Show checkout container
-        document.getElementById('checkout-container').style.display = 'block';
-    }
+        cartItemsContainer.appendChild(cartItemElement);
+    });
     
-    // Initialize Feather icons
-    feather.replace();
+    // Update the total amount
+    const cartTotalElement = document.getElementById('cart-total-amount');
+    if (cartTotalElement) {
+        cartTotalElement.textContent = `₹${totalAmount.toFixed(2)}`;
+    }
 }
 
 /**
@@ -217,74 +209,42 @@ function loadCartItems() {
  */
 function showToast(message) {
     const toastContainer = document.getElementById('toast-container');
-    if (!toastContainer) {
-        // Create toast container if it doesn't exist
-        const container = document.createElement('div');
-        container.id = 'toast-container';
-        container.className = 'position-fixed bottom-0 end-0 p-3';
-        container.style.zIndex = '1050';
-        document.body.appendChild(container);
+    
+    // Create toast if container exists
+    if (toastContainer) {
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = message;
+        
+        toastContainer.appendChild(toast);
+        
+        // Remove toast after animation completes
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
     }
-    
-    // Create unique ID for this toast
-    const toastId = 'toast-' + Date.now();
-    
-    // Create toast HTML
-    const toastHTML = `
-        <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="toast-header">
-                <strong class="me-auto">BookResell</strong>
-                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
-            <div class="toast-body">
-                ${message}
-            </div>
-        </div>
-    `;
-    
-    // Add toast to container
-    document.getElementById('toast-container').innerHTML += toastHTML;
-    
-    // Initialize and show the toast
-    const toastElement = document.getElementById(toastId);
-    const toast = new bootstrap.Toast(toastElement, { delay: 3000 });
-    toast.show();
-    
-    // Remove toast from DOM after it's hidden
-    toastElement.addEventListener('hidden.bs.toast', function() {
-        toastElement.remove();
-    });
 }
 
 /**
  * Proceed to checkout
  */
 function proceedToCheckout() {
+    const cart = JSON.parse(localStorage.getItem('cart')) || [];
+    
+    if (cart.length === 0) {
+        showToast('Your cart is empty');
+        return;
+    }
+    
     // Check if user is authenticated
-    if (!isAuthenticated()) {
-        // Save cart URL to redirect back after login
-        localStorage.setItem('redirectAfterLogin', 'cart.html');
-        window.location.href = 'login.html';
+    const isAuthenticated = localStorage.getItem('authToken') !== null;
+    
+    if (!isAuthenticated) {
+        // Redirect to login page, with a redirect back to checkout
+        window.location.href = '/login.html?redirect=checkout.html';
         return;
     }
     
     // Redirect to checkout page
-    window.location.href = 'checkout.html';
+    window.location.href = '/checkout.html';
 }
-
-// Initialize cart and update count when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-    initializeCart();
-    updateCartCount();
-    
-    // If we're on the cart page, load cart items
-    if (window.location.pathname.includes('cart.html')) {
-        loadCartItems();
-        
-        // Add event listener to checkout button
-        const checkoutButton = document.getElementById('checkout-button');
-        if (checkoutButton) {
-            checkoutButton.addEventListener('click', proceedToCheckout);
-        }
-    }
-});
