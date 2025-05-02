@@ -462,6 +462,89 @@
         </div>
     </main>
 
+    <!-- Edit Book Modal -->
+    <div class="modal fade" id="editBookModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Book</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger" id="edit-book-error" style="display: none;"></div>
+                    
+                    <form id="edit-book-form">
+                        <input type="hidden" id="edit-book-id">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="edit-book-title" class="form-label">Title</label>
+                                <input type="text" class="form-control" id="edit-book-title" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="edit-book-author" class="form-label">Author</label>
+                                <input type="text" class="form-control" id="edit-book-author" required>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="edit-book-description" class="form-label">Description</label>
+                            <textarea class="form-control" id="edit-book-description" rows="3" required></textarea>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="edit-book-genre" class="form-label">Genre</label>
+                                <select class="form-select" id="edit-book-genre" required>
+                                    <option value="">Select genre</option>
+                                    <option value="Fiction">Fiction</option>
+                                    <option value="Mystery">Mystery</option>
+                                    <option value="Science Fiction">Science Fiction</option>
+                                    <option value="Fantasy">Fantasy</option>
+                                    <option value="Biography">Biography</option>
+                                    <option value="History">History</option>
+                                    <option value="Romance">Romance</option>
+                                    <option value="Thriller">Thriller</option>
+                                    <option value="Self-help">Self-help</option>
+                                    <option value="Academic">Academic</option>
+                                    <option value="Educational">Educational</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="edit-book-condition" class="form-label">Condition</label>
+                                <select class="form-select" id="edit-book-condition" required>
+                                    <option value="">Select condition</option>
+                                    <option value="New">New</option>
+                                    <option value="Like New">Like New</option>
+                                    <option value="Very Good">Very Good</option>
+                                    <option value="Good">Good</option>
+                                    <option value="Acceptable">Acceptable</option>
+                                    <option value="Poor">Poor</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="edit-book-price" class="form-label">Price (₹)</label>
+                                <input type="number" class="form-control" id="edit-book-price" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="edit-book-image" class="form-label">Image URL (Leave blank to keep current image)</label>
+                            <input type="text" class="form-control" id="edit-book-image" placeholder="https://example.com/book-image.jpg">
+                            <div id="edit-book-current-image-container" class="mt-2">
+                                <p class="mb-1">Current image:</p>
+                                <img id="edit-book-current-image" src="" alt="Current book image" style="max-height: 100px; max-width: 100%;">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="save-edit-book">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Add Book Modal -->
     <div class="modal fade" id="addBookModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg">
