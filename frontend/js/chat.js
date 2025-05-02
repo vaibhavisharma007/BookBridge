@@ -253,9 +253,14 @@ function connectToWebSocket(chatId) {
         socket.close();
     }
     
-    // Get the JWT token
+    // Get the JWT token - make sure we're using the right variable name
     const token = localStorage.getItem('authToken');
-    if (!token) return;
+    if (!token) {
+        console.error('No authentication token found');
+        alert('You need to be logged in to use the chat feature.');
+        window.location.href = 'login.html';
+        return;
+    }
     
     // Determine WebSocket protocol (wss for HTTPS, ws for HTTP)
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -331,16 +336,24 @@ function connectToWebSocket(chatId) {
     
     // Handle incoming messages
     socket.onmessage = function(event) {
-        const data = JSON.parse(event.data);
+        console.log('WebSocket message received:', event.data);
+        let data;
+        try {
+            data = JSON.parse(event.data);
+        } catch (e) {
+            console.error('Error parsing WebSocket message:', e);
+            return;
+        }
         
         if (data.type === 'message') {
+            console.log('Message received:', data);
             // Add message to the chat
             const message = {
-                id: data.data.message_id,
+                id: data.data?.message_id || Date.now(), // Fallback if no message_id
                 sender_id: data.sender_id,
-                sender_name: data.data.sender_name,
+                sender_name: data.data?.sender_name || 'Unknown',
                 content: data.content,
-                created_at: data.timestamp,
+                created_at: data.timestamp || new Date().toISOString(),
                 is_self_sender: data.sender_id === getUserData().id
             };
             
@@ -349,10 +362,46 @@ function connectToWebSocket(chatId) {
             // Scroll to the bottom
             const chatMessages = document.getElementById('chat-messages');
             chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Show notification if needed
+            if (!message.is_self_sender) {
+                // Could add browser notification here
+                // Note: No audio notification for now as we don't have the sound file
+                // Just log the message reception
+                console.log('New message received from', message.sender_name);
+                
+                // Flash the title to notify the user if the tab is not active
+                if (document.hidden) {
+                    let originalTitle = document.title;
+                    document.title = '📩 New Message - BookResell';
+                    
+                    // Restore the original title when the tab becomes active again
+                    window.addEventListener('focus', function onFocus() {
+                        document.title = originalTitle;
+                        window.removeEventListener('focus', onFocus);
+                    });
+                }
+            }
+        } else if (data.type === 'chat_created') {
+            console.log('New chat created:', data);
+            // Save the new chat id
+            currentChatId = data.chat_id;
+            // Update URL to include chat ID
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set('chat_id', currentChatId);
+            window.history.replaceState({}, '', currentUrl);
+            // Refresh chat list
+            loadChatSessions();
         } else if (data.type === 'history') {
             // History already loaded by the API
+            console.log('Chat history received');
         } else if (data.type === 'error') {
             console.error('WebSocket error:', data.content);
+            alert(`Chat error: ${data.content}`); 
+        } else if (data.type === 'connection_success') {
+            console.log('WebSocket connection successful:', data.content);
+        } else {
+            console.log('Unknown message type:', data.type);
         }
     };
     
@@ -399,21 +448,64 @@ function addMessageToChat(message) {
  */
 function sendMessage() {
     const messageInput = document.getElementById('message-input');
+    const sendButton = document.querySelector('#message-form button[type="submit"]');
     const content = messageInput.value.trim();
     
-    if (!content || !socket || socket.readyState !== WebSocket.OPEN || !currentChatId) {
+    if (!content) {
+        // Nothing to send
         return;
     }
     
-    // Send message
-    socket.send(JSON.stringify({
-        type: 'message',
-        content: content,
-        chat_id: currentChatId
-    }));
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+        alert('Chat connection lost. Please refresh the page and try again.');
+        return;
+    }
     
-    // Clear input
-    messageInput.value = '';
+    if (!currentChatId) {
+        console.error('No active chat ID');
+        alert('No active chat. Please select a chat or start a new one.');
+        return;
+    }
+    
+    // Disable input and button while sending
+    messageInput.disabled = true;
+    if (sendButton) sendButton.disabled = true;
+    
+    try {
+        // Send message
+        socket.send(JSON.stringify({
+            type: 'message',
+            content: content,
+            chat_id: currentChatId
+        }));
+        
+        // Clear input
+        messageInput.value = '';
+        
+        // Add message to UI immediately for better UX (optimistic UI)
+        // The actual message from the server will replace this if needed
+        const user = getUserData();
+        addMessageToChat({
+            id: Date.now(),
+            sender_id: user.id,
+            sender_name: user.username,
+            content: content,
+            created_at: new Date().toISOString(),
+            is_self_sender: true
+        });
+        
+        // Scroll to the bottom
+        const chatMessages = document.getElementById('chat-messages');
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    } catch (error) {
+        console.error('Error sending message:', error);
+        alert('Failed to send message. Please try again.');
+    } finally {
+        // Re-enable input and button
+        messageInput.disabled = false;
+        if (sendButton) sendButton.disabled = false;
+        messageInput.focus();
+    }
 }
 
 /**
