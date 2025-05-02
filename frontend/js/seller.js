@@ -104,6 +104,9 @@ function createBookRow(book) {
         statusBadgeClass = 'bg-warning';
     }
     
+    // Random number of views for demo - in a real app this would come from analytics
+    const viewCount = Math.floor(Math.random() * 100) + 1;
+    
     // Create row content
     row.innerHTML = `
         <td>${book.title}</td>
@@ -111,12 +114,16 @@ function createBookRow(book) {
         <td>₹${book.price.toFixed(2)}</td>
         <td><span class="badge ${statusBadgeClass}">${book.status}</span></td>
         <td>${dateStr}</td>
+        <td>${viewCount}</td>
         <td>
             <div class="btn-group">
-                <a href="book-detail.html?id=${book.id}" class="btn btn-sm btn-outline-primary" title="View">
+                <a href="book-detail.html?id=${book.id}" class="btn btn-sm btn-outline-primary btn-action" title="View">
                     <i data-feather="eye"></i>
                 </a>
-                <button class="btn btn-sm btn-outline-danger delete-book" data-id="${book.id}" data-title="${book.title}" title="Delete">
+                <button class="btn btn-sm btn-outline-secondary btn-action edit-book" data-id="${book.id}" data-title="${book.title}" title="Edit">
+                    <i data-feather="edit"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger btn-action delete-book" data-id="${book.id}" data-title="${book.title}" title="Delete">
                     <i data-feather="trash-2"></i>
                 </button>
             </div>
@@ -128,6 +135,12 @@ function createBookRow(book) {
         const bookId = this.dataset.id;
         const bookTitle = this.dataset.title;
         showDeleteConfirmation(bookId, bookTitle);
+    });
+    
+    // Add event listener for edit button (placeholder for future functionality)
+    row.querySelector('.edit-book').addEventListener('click', function() {
+        const bookId = this.dataset.id;
+        alert(`Edit functionality for book ID ${bookId} will be implemented soon.`);
     });
     
     return row;
@@ -473,6 +486,165 @@ function initializeAddBookForm() {
     });
 }
 
+/**
+ * Initialize dashboard analytics charts
+ */
+function initializeAnalyticsCharts() {
+    // Sales Chart
+    const salesChartCtx = document.getElementById('sales-chart');
+    if (salesChartCtx) {
+        new Chart(salesChartCtx, {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                datasets: [{
+                    label: 'Sales (₹)',
+                    data: [1200, 1900, 3000, 5000, 2000, 3500],
+                    backgroundColor: 'rgba(74, 109, 167, 0.2)',
+                    borderColor: 'rgba(74, 109, 167, 1)',
+                    borderWidth: 2,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '₹' + value;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Top Books Chart
+    const topBooksChartCtx = document.getElementById('top-books-chart');
+    if (topBooksChartCtx) {
+        new Chart(topBooksChartCtx, {
+            type: 'bar',
+            data: {
+                labels: ['To Kill a Mockingbird', '1984', 'Pride and Prejudice', 'The Great Gatsby', 'The Hobbit'],
+                datasets: [{
+                    label: 'Sales',
+                    data: [12, 8, 6, 5, 4],
+                    backgroundColor: [
+                        'rgba(74, 109, 167, 0.7)',
+                        'rgba(74, 109, 167, 0.6)',
+                        'rgba(74, 109, 167, 0.5)',
+                        'rgba(74, 109, 167, 0.4)',
+                        'rgba(74, 109, 167, 0.3)'
+                    ],
+                    borderColor: [
+                        'rgba(74, 109, 167, 1)',
+                        'rgba(74, 109, 167, 1)',
+                        'rgba(74, 109, 167, 1)',
+                        'rgba(74, 109, 167, 1)',
+                        'rgba(74, 109, 167, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Views Chart
+    const viewsChartCtx = document.getElementById('views-chart');
+    if (viewsChartCtx) {
+        new Chart(viewsChartCtx, {
+            type: 'line',
+            data: {
+                labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                datasets: [{
+                    label: 'Profile Views',
+                    data: [65, 120, 80, 130],
+                    borderColor: 'rgba(23, 162, 184, 1)',
+                    backgroundColor: 'rgba(23, 162, 184, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }, {
+                    label: 'Book Views',
+                    data: [30, 60, 90, 150],
+                    borderColor: 'rgba(40, 167, 69, 1)',
+                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
+    // Messages Chart
+    const messagesChartCtx = document.getElementById('messages-chart');
+    if (messagesChartCtx) {
+        new Chart(messagesChartCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Responded', 'Pending', 'Closed'],
+                datasets: [{
+                    data: [15, 5, 8],
+                    backgroundColor: [
+                        'rgba(40, 167, 69, 0.7)',
+                        'rgba(255, 193, 7, 0.7)',
+                        'rgba(220, 53, 69, 0.7)'
+                    ],
+                    borderColor: [
+                        'rgba(40, 167, 69, 1)',
+                        'rgba(255, 193, 7, 1)',
+                        'rgba(220, 53, 69, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%'
+            }
+        });
+    }
+}
+
+/**
+ * Load seller's dashboard data
+ */
+function loadDashboardData() {
+    // Set example data for dashboard panels
+    document.getElementById('total-sales').textContent = '15,750.00';
+    document.getElementById('unread-messages').textContent = '3';
+    
+    // Initialize charts
+    initializeAnalyticsCharts();
+}
+
 // Add event listeners when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Feather icons
@@ -493,6 +665,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Load recent messages
     loadRecentMessages();
+    
+    // Load dashboard data
+    loadDashboardData();
     
     // Initialize add book form
     initializeAddBookForm();
