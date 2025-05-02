@@ -172,8 +172,42 @@ func UpdateUserProfile(c *gin.Context) {
                 return
         }
 
+        // Check if bio column exists before updating
+        var bioColumnExists bool
+        err := db.DB.QueryRow(`
+                SELECT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'users' AND column_name = 'bio'
+                )
+        `).Scan(&bioColumnExists)
+        
+        if err != nil {
+            log.Printf("Error checking for bio column: %v", err)
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+            return
+        }
+        
+        // Add the bio column if it doesn't exist
+        if !bioColumnExists {
+            _, err = db.DB.Exec(`ALTER TABLE users ADD COLUMN bio TEXT DEFAULT 'Book enthusiast'`)
+            if err != nil {
+                log.Printf("Error adding bio column: %v", err)
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+                return
+            }
+            
+            _, err = db.DB.Exec(`ALTER TABLE users ADD COLUMN profile_image_url TEXT DEFAULT ''`)
+            if err != nil {
+                log.Printf("Error adding profile_image_url column: %v", err)
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+                return
+            }
+            
+            log.Println("Added bio and profile_image_url columns to users table")
+        }
+        
         // Update user profile
-        _, err := db.DB.Exec(`
+        _, err = db.DB.Exec(`
                 UPDATE users 
                 SET bio = $1, profile_image_url = $2
                 WHERE id = $3`,

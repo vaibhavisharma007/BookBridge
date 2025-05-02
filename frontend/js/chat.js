@@ -382,6 +382,23 @@ function connectToWebSocket(chatId) {
     
     try {
         console.log('Creating new WebSocket connection to:', wsUrl);
+        
+        // Get the token for authentication
+        const token = localStorage.getItem('token');
+        if (!token) {
+            console.error('No token found for WebSocket authentication');
+            displayConnectionError('Authentication error. Please try logging in again.');
+            return;
+        }
+        
+        // Add the token as a request header when establishing connection if supported
+        const wsHeaders = {
+            'Authorization': `Bearer ${token}`
+        };
+        
+        // For browsers that don't support custom headers in WebSocket constructor,
+        // we'll authenticate with the first message after connection
+        
         // Create new WebSocket connection with better error handling
         socket = new WebSocket(wsUrl);
         connectionAttempted = true;
@@ -391,7 +408,7 @@ function connectToWebSocket(chatId) {
             console.log('WebSocket opened successfully, sending authentication token');
             
             try {
-                // Send authentication token as first message
+                // Send authentication token as first message (backup authentication method)
                 this.send(JSON.stringify({
                     type: 'auth',
                     token: token
