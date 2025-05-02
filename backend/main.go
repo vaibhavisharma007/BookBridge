@@ -133,6 +133,14 @@ func main() {
                 chats.GET("/:id", handlers.GetChatMessages)
         }
 
+        // User/Seller profile routes
+        users := router.Group("/api/users")
+        {
+                users.GET("/:id", handlers.GetUserProfile)
+                users.GET("/:id/seller", handlers.GetSellerProfile)
+                users.PUT("/profile", middleware.AuthMiddleware(), handlers.UpdateUserProfile)
+        }
+
         // Initialize Stripe
         handlers.InitStripe()
 
@@ -187,6 +195,10 @@ func main() {
         })
         
         router.GET("/payment-success.html", func(c *gin.Context) {
+            simpleIndexHandler(c.Writer, c.Request)
+        })
+        
+        router.GET("/seller-profile.html", func(c *gin.Context) {
             simpleIndexHandler(c.Writer, c.Request)
         })
         
