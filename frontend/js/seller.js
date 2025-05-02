@@ -305,63 +305,85 @@ function initializeAddBookForm() {
         const author = document.getElementById('book-author').value.trim();
         const genre = document.getElementById('book-genre').value;
         const condition = document.getElementById('book-condition').value;
+        const priceInput = document.getElementById('book-price');
+        const priceWarning = document.getElementById('price-warning');
+        const priceGuidance = document.getElementById('price-guidance');
         
         // Only proceed if all required fields are filled
         if (!title || !author || !genre || !condition) {
+            priceGuidance.style.display = 'none';
             return;
         }
         
-        // Show loading in price guidance
-        priceGuidance.innerHTML = '<span class="text-info"><i data-feather="loader" class="loader-icon"></i> Calculating suggested price...</span>';
+        // Show loading indicator in the price guidance element
+        priceGuidance.innerHTML = '<div class="d-flex align-items-center"><div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div><span>Calculating recommended price...</span></div>';
         priceGuidance.style.display = 'block';
         
-        // Replace feather icons
-        feather.replace();
-        
-        // Add a spinning animation to the loader icon
-        document.querySelector('.loader-icon').classList.add('spin-animation');
-        
-        // Create prediction request object
-        const predictionRequest = {
-            title,
-            author,
-            genre,
-            condition
+        // Prepare request data
+        const requestData = {
+            title: title,
+            author: author,
+            genre: genre,
+            condition: condition
         };
         
-        // Call the prediction API endpoint
+        // Call the API to get price prediction
         fetch('/api/books/predict-price', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 ...getAuthHeaders()
             },
-            body: JSON.stringify(predictionRequest)
+            body: JSON.stringify(requestData)
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to get price prediction');
+            }
+            return response.json();
+        })
         .then(data => {
-            if (data.predicted_price) {
-                // Show the predicted price guidance
-                priceGuidance.innerHTML = `
-                    <div class="mt-2">
-                        <span class="fw-bold">Suggested price: ₹${data.predicted_price.toFixed(2)}</span><br>
-                        <small class="text-muted">Based on ML analysis of similar books</small>
+            // Format the predicted price with Indian Rupee symbol
+            const formattedPrice = new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: 'INR',
+                maximumFractionDigits: 0
+            }).format(data.predicted_price);
+            
+            // Update the price guidance element
+            priceGuidance.innerHTML = `
+                <div class="alert alert-info mb-0">
+                    <div class="d-flex align-items-center">
+                        <i data-feather="info" class="me-2"></i>
+                        <div>
+                            <strong>Recommended Price:</strong> ${formattedPrice}
+                            <div class="small">Based on similar books in our marketplace</div>
+                        </div>
                     </div>
-                `;
-                
-                // Update the price input
-                const priceInput = document.getElementById('book-price');
-                if (!priceInput.value) {
-                    priceInput.value = data.predicted_price.toFixed(2);
-                }
+                </div>
+            `;
+            
+            // Replace feather icons
+            feather.replace();
+            
+            // Store the predicted price for later validation
+            priceGuidance.dataset.predictedPrice = data.predicted_price;
+            
+            // Check if user entered a price and compare with prediction
+            const currentPrice = parseFloat(priceInput.value);
+            if (!isNaN(currentPrice) && currentPrice > data.predicted_price * 1.1) {
+                priceWarning.textContent = `Your price is significantly higher than the recommended price of ${formattedPrice}. Consider lowering it to increase chances of selling.`;
+                priceWarning.style.display = 'block';
             } else {
-                priceGuidance.innerHTML = '<span class="text-warning">Could not calculate suggested price</span>';
+                priceWarning.style.display = 'none';
             }
         })
         .catch(error => {
-            console.error('Error predicting price:', error);
-            priceGuidance.innerHTML = '<span class="text-danger">Error calculating price</span>';
+            console.error('Error getting price prediction:', error);
+            priceGuidance.innerHTML = '<div class="text-danger">Unable to calculate recommended price. Please set a fair price based on condition and market value.</div>';
         });
+        
+
     }
     
     // Add event listeners to form fields for real-time price prediction
