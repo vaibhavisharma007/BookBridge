@@ -7,6 +7,7 @@ let currentChatId = null;
 let socket = null;
 let activeChats = [];
 let deepChatInstance = null;
+let chatbotInstance = null; // Separate instance for the chatbot assistant
 
 /**
  * Initialize the chat system
@@ -99,11 +100,24 @@ function loadChatSessions() {
     .then(response => {
         if (!response.ok) {
             console.error('Failed to load chats with status:', response.status);
-            throw new Error(`Failed to load chats: ${response.status} ${response.statusText}`);
+            return response.text().then(text => {
+                console.error('Error response body:', text);
+                throw new Error(`Failed to load chats: ${response.status} ${response.statusText}`);
+            });
         }
         return response.json();
     })
     .then(chats => {
+        // Log the successful response for debugging
+        console.log('Chats response:', chats);
+        
+        // Handle case where response is not an array
+        if (!Array.isArray(chats)) {
+            console.error('Expected array of chats but got:', typeof chats);
+            // Initialize as empty array to prevent errors
+            chats = [];
+        }
+        
         // Store the chats
         activeChats = chats;
         
@@ -144,6 +158,9 @@ function loadChatSessions() {
         errorDiv.className = 'list-group-item text-center text-danger chat-error-message';
         errorDiv.textContent = 'Failed to load conversations. Please try again.';
         chatList.appendChild(errorDiv);
+        
+        // Show no chats message as fallback
+        if (noChatsMessage) noChatsMessage.style.display = 'block';
     });
 }
 
@@ -263,6 +280,17 @@ function loadChat(chatId, bookId, bookTitle) {
             chatArea.innerHTML = '';
             
             try {
+                // Reset previous deep chat instance if any
+                if (deepChatInstance) {
+                    try {
+                        // Clean up previous instance
+                        deepChatInstance.remove();
+                    } catch (e) {
+                        console.warn('Error cleaning up previous Deep Chat instance:', e);
+                    }
+                    deepChatInstance = null;
+                }
+                
                 // Create and configure Deep Chat element with proper properties
                 const deepChatElement = document.createElement('deep-chat');
                 
@@ -271,6 +299,9 @@ function loadChat(chatId, bookId, bookTitle) {
                 deepChatElement.style.width = '100%';
                 deepChatElement.style.border = '1px solid #e9ecef';
                 deepChatElement.style.borderRadius = '0.25rem';
+                
+                // Add identification class
+                deepChatElement.classList.add('peer-chat');
                 
                 // Initial empty messages array
                 deepChatElement.setAttribute('messages', '[]');
