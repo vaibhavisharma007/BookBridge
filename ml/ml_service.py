@@ -167,6 +167,19 @@ class BookPricePredictor:
         self.condition_columns = X_condition.columns
     
     def predict(self, title, author, genre, condition):
+        # Validate inputs before proceeding
+        if not title or title.strip() == '':
+            # Return a default price if no title provided
+            print("Warning: No title provided for price prediction")
+            return 350.0
+            
+        # Explicitly handle academic books and JEE/NEET preparation materials
+        title_lower = title.lower()
+        academic_indicators = ['textbook', 'mathematics', 'physics', 'chemistry', 'biology', 
+                              'jee', 'neet', 'iit', 'preparation', 'exam', 'study', 'guide']
+        
+        is_academic = (genre and 'academic' in genre.lower()) or any(term in title_lower for term in academic_indicators)
+        
         # First try to get real book price data from online sources
         try:
             online_data = self.book_fetcher.search_book_price(title, author)
@@ -203,50 +216,89 @@ class BookPricePredictor:
                     random_factor = np.random.uniform(0.95, 1.05)
                     adjusted_price *= random_factor
                 
-                # Ensure price follows our business rules (between ₹100 and ₹1000)
+                # Ensure price follows our business rules (between ₹100 and ₹2000)
                 adjusted_price = max(100.0, adjusted_price)
-                adjusted_price = min(1000.0, adjusted_price)
+                adjusted_price = min(2000.0, adjusted_price)
                 
                 # Return the price with source
                 return round(adjusted_price, 2)
             
         except Exception as e:
             print(f"Error fetching online price data: {e}")
-            # Fall back to ML model
-            pass
+            # Fall back to ML model or heuristic approach
         
-        # Fall back to ML model if online data fails or returns no price
-        if not self.is_trained:
-            self._train_model()
+        # If it's clearly an academic book, use a specialized pricing strategy
+        if is_academic:
+            # Base price for academic books
+            if 'jee' in title_lower or 'neet' in title_lower or 'iit' in title_lower:
+                base_price = 700.0  # Higher price for competitive exam books
+            else:
+                base_price = 550.0  # Standard academic book price
+                
+            # Adjust for condition
+            condition_factors = {
+                'New': 1.0,
+                'Like New': 0.9,
+                'Very Good': 0.8,
+                'Good': 0.7,
+                'Acceptable': 0.6,
+                'Poor': 0.4
+            }
+            
+            # Apply condition adjustment
+            condition_factor = condition_factors.get(condition, 0.7)
+            adjusted_price = base_price * condition_factor
+            
+            # Return the academic book price
+            return round(adjusted_price, 2)
         
-        # Create text feature
-        text_feature = title + ' ' + author + ' ' + genre
-        X_text = self.vectorizer.transform([text_feature])
-        
-        # Create one-hot encoded condition
-        condition_one_hot = np.zeros(len(self.condition_columns))
-        for i, col in enumerate(self.condition_columns):
-            if col == f'condition_{condition}':
-                condition_one_hot[i] = 1
-                break
-        
-        # Combine features
-        X = np.hstack((X_text.toarray(), condition_one_hot.reshape(1, -1)))
-        
-        # Predict price
-        predicted_price = self.model.predict(X)[0]
-        
-        # Add a small random factor to make it more realistic
-        random_factor = np.random.uniform(0.95, 1.05)
-        predicted_price *= random_factor
-        
-        # Ensure a minimum price of ₹100
-        predicted_price = max(100.0, predicted_price)
-        
-        # Cap maximum price at ₹1000 to keep prices reasonable
-        predicted_price = min(1000.0, predicted_price)
-        
-        return round(predicted_price, 2)
+        # Fall back to ML model for non-academic books
+        try:
+            if not self.is_trained:
+                self._train_model()
+            
+            # Create text feature
+            text_feature = title + ' ' + author + ' ' + genre
+            X_text = self.vectorizer.transform([text_feature])
+            
+            # Create one-hot encoded condition
+            condition_one_hot = np.zeros(len(self.condition_columns))
+            for i, col in enumerate(self.condition_columns):
+                if col == f'condition_{condition}':
+                    condition_one_hot[i] = 1
+                    break
+            
+            # Combine features
+            X = np.hstack((X_text.toarray(), condition_one_hot.reshape(1, -1)))
+            
+            # Predict price
+            predicted_price = self.model.predict(X)[0]
+            
+            # Add a small random factor to make it more realistic
+            random_factor = np.random.uniform(0.95, 1.05)
+            predicted_price *= random_factor
+            
+            # Ensure a minimum price of ₹100
+            predicted_price = max(100.0, predicted_price)
+            
+            # Cap maximum price at ₹1500 to keep prices reasonable
+            predicted_price = min(1500.0, predicted_price)
+            
+            return round(predicted_price, 2)
+            
+        except Exception as e:
+            print(f"Error in ML prediction: {e}")
+            # If all else fails, return a reasonable default price based on condition
+            base_price = 350.0  # Default price
+            condition_factors = {
+                'New': 1.0,
+                'Like New': 0.9,
+                'Very Good': 0.8,
+                'Good': 0.7,
+                'Acceptable': 0.5,
+                'Poor': 0.3
+            }
+            return round(base_price * condition_factors.get(condition, 0.7), 2)
         
     def get_model_accuracy(self):
         # In a real application, this would calculate metrics like R² or MAE on validation data

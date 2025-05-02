@@ -88,6 +88,21 @@ class BookDataFetcher:
         """Estimate book price based on metadata"""
         base_price = 300  # Base price in INR
         
+        # Extract useful indicators from title and description
+        title = book_data.get('title', '').lower()
+        description = book_data.get('description', '').lower()
+        title_and_desc = title + " " + description
+        
+        # Special case for JEE/NEET and other academic entrance exam books
+        academic_exam_indicators = ['jee', 'neet', 'upsc', 'gate', 'cat', 'iit', 'aiims', 'entrance', 'exam', 'preparation']
+        if any(indicator in title_and_desc for indicator in academic_exam_indicators):
+            # JEE/NEET books are typically more expensive
+            base_price = 550
+            
+            # If it appears to be a comprehensive book or set
+            if any(word in title_and_desc for word in ['complete', 'comprehensive', 'all-in-one', 'series', 'set']):
+                base_price = 750
+        
         # Adjust for page count
         if book_data['page_count'] > 0:
             page_factor = min(book_data['page_count'] / 300, 2.0)  # Cap at 2x for very long books
@@ -100,16 +115,22 @@ class BookDataFetcher:
             base_price *= rating_factor * popularity_factor
         
         # Adjust for categories/genres
-        academic_keywords = ['textbook', 'education', 'academic', 'study', 'mathematics', 'science', 'physics', 'chemistry', 'biology']
+        academic_keywords = ['textbook', 'education', 'academic', 'study', 'mathematics', 'science', 'physics', 
+                            'chemistry', 'biology', 'engineering', 'computer', 'medicine', 'medical', 'law', 
+                            'economics', 'business', 'management', 'reference']
         if book_data['categories']:
             for category in book_data['categories']:
                 category_lower = category.lower()
                 # Academic books tend to be more expensive
                 if any(keyword in category_lower for keyword in academic_keywords):
-                    base_price *= 1.4
+                    base_price *= 1.5
                 # Fiction tends to be less expensive
                 elif 'fiction' in category_lower:
-                    base_price *= 0.9
+                    base_price *= 0.8
+        else:
+            # If no categories are available, try to infer from title/description
+            if any(keyword in title_and_desc for keyword in academic_keywords):
+                base_price *= 1.4
                     
         # Adjust for recency of publication
         if book_data['published_date']:
@@ -127,7 +148,7 @@ class BookDataFetcher:
             except:
                 pass
         
-        # Apply condition discount for used books
+        # Return the base price (condition adjustment is applied elsewhere)
         return round(base_price, 2)
     
     def get_similar_books(self, title, author=None, max_results=5):
