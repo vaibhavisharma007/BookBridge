@@ -177,17 +177,17 @@ class BookRecommender:
     def _load_collaborative_model(self):
         """Load the collaborative filtering model from pickle files"""
         try:
-            # Load the pickle files from the data directory
-            with open("data/books.pkl", "rb") as f:
+            # Load the pickle files from the ml/pickles directory
+            with open("ml/pickles/books.pkl", "rb") as f:
                 self.collaborative_books = pickle.load(f)
             
-            with open("data/popular.pkl", "rb") as f:
+            with open("ml/pickles/popular.pkl", "rb") as f:
                 self.popular_df = pickle.load(f)
             
-            with open("data/pt.pkl", "rb") as f:
+            with open("ml/pickles/pt.pkl", "rb") as f:
                 self.pt = pickle.load(f)
             
-            with open("data/similarity_scores.pkl", "rb") as f:
+            with open("ml/pickles/similarity_scores.pkl", "rb") as f:
                 self.similarity_scores = pickle.load(f)
             
             self.collaborative_model_loaded = True
