@@ -26,7 +26,7 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd backend && go mod tidy && go get github.com/gin-gonic/gin github.com/gin-contrib/cors github.com/gorilla/websocket github.com/lib/pq github.com/golang-jwt/jwt/v4 golang.org/x/crypto/bcrypt && go run main.go"
+args = "cd backend && go run main.go"
 waitForPort = 8000
 
 [[workflows.workflow]]
@@ -39,7 +39,7 @@ args = "cd ml && python ml_service.py"
 waitForPort = 5001
 
 [deployment]
-run = ["sh", "-c", "cd backend && go mod tidy && go get github.com/gin-gonic/gin github.com/gin-contrib/cors github.com/gorilla/websocket github.com/lib/pq github.com/golang-jwt/jwt/v4 golang.org/x/crypto/bcrypt && go run main.go"]
+run = ["sh", "-c", "cd backend && go run main.go"]
 
 [[ports]]
 localPort = 5001
