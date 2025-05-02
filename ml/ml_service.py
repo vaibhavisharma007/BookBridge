@@ -235,8 +235,8 @@ class BookPricePredictor:
         random_factor = np.random.uniform(0.95, 1.05)
         predicted_price *= random_factor
         
-        # Ensure a minimum price (minimum price for used books is 20 Rs)
-        predicted_price = max(20.0, predicted_price)
+        # Ensure a minimum price (minimum price for books is 100 Rs as requested)
+        predicted_price = max(100.0, predicted_price)
         
         return round(predicted_price, 2)
         
