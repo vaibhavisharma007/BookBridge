@@ -253,7 +253,7 @@ function connectToWebSocket(chatId) {
         socket.close();
     }
     
-    // Get the JWT token - make sure we're using the right variable name
+    // Get the JWT token from the authentication utility
     const token = localStorage.getItem('authToken');
     if (!token) {
         console.error('No authentication token found');
@@ -309,112 +309,163 @@ function connectToWebSocket(chatId) {
         console.log('Connecting to WebSocket URL for existing chat:', wsUrl);
     }
     
-    try {
-        // Create new WebSocket connection
-        socket = new WebSocket(wsUrl);
+    // Initially set a connection error handler that shows detailed information
+    let connectionAttempted = false;
+    const connectionTimeout = setTimeout(() => {
+        if (!connectionAttempted) {
+            console.error('WebSocket connection timeout');
+            alert('Chat connection timed out. Please check your internet connection and try again.');
+        }
+    }, 5000); // 5 second timeout
     
-        // Add token to the request headers
+    try {
+        console.log('Creating new WebSocket connection to:', wsUrl);
+        // Create new WebSocket connection with better error handling
+        socket = new WebSocket(wsUrl);
+        connectionAttempted = true;
+        
         socket.onopen = function() {
-            // Set the Authorization header for the WebSocket connection
-            console.log('WebSocket opened, sending authentication');
+            clearTimeout(connectionTimeout);
+            console.log('WebSocket opened successfully, sending authentication token');
+            
             try {
+                // Send authentication token as first message
                 this.send(JSON.stringify({
                     type: 'auth',
                     token: token
                 }));
-                console.log('WebSocket authentication sent');
+                console.log('WebSocket authentication token sent successfully');
+                
+                // Let the user know connection is successful
+                const chatMessages = document.getElementById('chat-messages');
+                if (chatMessages && chatMessages.querySelector('.connection-error')) {
+                    chatMessages.querySelector('.connection-error').remove();
+                }
             } catch (sendError) {
-                console.error('WebSocket authentication error:', sendError);
-                alert('Chat connection failed. Please reload the page and try again.');
+                console.error('Error sending WebSocket authentication:', sendError);
+                displayConnectionError('Failed to authenticate chat connection. Please try again.');
+            }
+        };
+        
+        socket.onmessage = function(event) {
+            console.log('WebSocket message received:', event.data);
+            let data;
+            try {
+                data = JSON.parse(event.data);
+            } catch (e) {
+                console.error('Error parsing WebSocket message:', e);
+                return;
+            }
+            
+            if (data.type === 'message') {
+                console.log('Message received:', data);
+                // Add message to the chat
+                const message = {
+                    id: data.data?.message_id || Date.now(), // Fallback if no message_id
+                    sender_id: data.sender_id,
+                    sender_name: data.data?.sender_name || 'Unknown',
+                    content: data.content,
+                    created_at: data.timestamp || new Date().toISOString(),
+                    is_self_sender: data.sender_id === getUserData().id
+                };
+                
+                addMessageToChat(message);
+                
+                // Scroll to the bottom
+                const chatMessages = document.getElementById('chat-messages');
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+                // Show notification if needed
+                if (!message.is_self_sender) {
+                    // Could add browser notification here
+                    // Note: No audio notification for now as we don't have the sound file
+                    // Just log the message reception
+                    console.log('New message received from', message.sender_name);
+                    
+                    // Flash the title to notify the user if the tab is not active
+                    if (document.hidden) {
+                        let originalTitle = document.title;
+                        document.title = '📩 New Message - BookResell';
+                        
+                        // Restore the original title when the tab becomes active again
+                        window.addEventListener('focus', function onFocus() {
+                            document.title = originalTitle;
+                            window.removeEventListener('focus', onFocus);
+                        });
+                    }
+                }
+            } else if (data.type === 'chat_created') {
+                console.log('New chat created:', data);
+                // Save the new chat id
+                currentChatId = data.chat_id;
+                // Update URL to include chat ID
+                const currentUrl = new URL(window.location.href);
+                currentUrl.searchParams.set('chat_id', currentChatId);
+                window.history.replaceState({}, '', currentUrl);
+                // Refresh chat list
+                loadChatSessions();
+            } else if (data.type === 'history') {
+                // History already loaded by the API
+                console.log('Chat history received');
+            } else if (data.type === 'error') {
+                console.error('WebSocket error:', data.content);
+                alert(`Chat error: ${data.content}`); 
+            } else if (data.type === 'connection_success') {
+                console.log('WebSocket connection successful:', data.content);
+            } else {
+                console.log('Unknown message type:', data.type);
+            }
+        };
+        
+        socket.onerror = function(error) {
+            clearTimeout(connectionTimeout);
+            console.error('WebSocket error occurred:', error);
+            displayConnectionError('Chat connection error. Please try refreshing the page.');
+        };
+        
+        socket.onclose = function(event) {
+            clearTimeout(connectionTimeout);
+            console.log('WebSocket connection closed with code:', event.code);
+            if (!event.wasClean) {
+                displayConnectionError('Chat connection was interrupted. Please refresh the page to reconnect.');
             }
         };
     } catch (connError) {
+        clearTimeout(connectionTimeout);
         console.error('Failed to create WebSocket connection:', connError);
-        alert('Chat connection failed. Please reload the page and try again.');
+        displayConnectionError('Failed to establish chat connection. Please try again later.');
         return;
     }
-    
-    // Handle incoming messages
-    socket.onmessage = function(event) {
-        console.log('WebSocket message received:', event.data);
-        let data;
-        try {
-            data = JSON.parse(event.data);
-        } catch (e) {
-            console.error('Error parsing WebSocket message:', e);
-            return;
-        }
-        
-        if (data.type === 'message') {
-            console.log('Message received:', data);
-            // Add message to the chat
-            const message = {
-                id: data.data?.message_id || Date.now(), // Fallback if no message_id
-                sender_id: data.sender_id,
-                sender_name: data.data?.sender_name || 'Unknown',
-                content: data.content,
-                created_at: data.timestamp || new Date().toISOString(),
-                is_self_sender: data.sender_id === getUserData().id
-            };
-            
-            addMessageToChat(message);
-            
-            // Scroll to the bottom
-            const chatMessages = document.getElementById('chat-messages');
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            
-            // Show notification if needed
-            if (!message.is_self_sender) {
-                // Could add browser notification here
-                // Note: No audio notification for now as we don't have the sound file
-                // Just log the message reception
-                console.log('New message received from', message.sender_name);
-                
-                // Flash the title to notify the user if the tab is not active
-                if (document.hidden) {
-                    let originalTitle = document.title;
-                    document.title = '📩 New Message - BookResell';
-                    
-                    // Restore the original title when the tab becomes active again
-                    window.addEventListener('focus', function onFocus() {
-                        document.title = originalTitle;
-                        window.removeEventListener('focus', onFocus);
-                    });
-                }
+
+    // Helper function to display connection errors in the UI
+    function displayConnectionError(message) {
+        const chatMessages = document.getElementById('chat-messages');
+        if (chatMessages) {
+            // Remove any existing connection error message
+            const existingError = chatMessages.querySelector('.connection-error');
+            if (existingError) {
+                existingError.remove();
             }
-        } else if (data.type === 'chat_created') {
-            console.log('New chat created:', data);
-            // Save the new chat id
-            currentChatId = data.chat_id;
-            // Update URL to include chat ID
-            const currentUrl = new URL(window.location.href);
-            currentUrl.searchParams.set('chat_id', currentChatId);
-            window.history.replaceState({}, '', currentUrl);
-            // Refresh chat list
-            loadChatSessions();
-        } else if (data.type === 'history') {
-            // History already loaded by the API
-            console.log('Chat history received');
-        } else if (data.type === 'error') {
-            console.error('WebSocket error:', data.content);
-            alert(`Chat error: ${data.content}`); 
-        } else if (data.type === 'connection_success') {
-            console.log('WebSocket connection successful:', data.content);
-        } else {
-            console.log('Unknown message type:', data.type);
+            
+            // Add new error message
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'text-center py-3 text-danger connection-error';
+            errorDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i data-feather="alert-triangle"></i> ${message}
+                </div>
+            `;
+            chatMessages.appendChild(errorDiv);
+            
+            // Re-initialize feather icons if they're used
+            if (typeof feather !== 'undefined') {
+                feather.replace();
+            }
         }
-    };
-    
-    // Handle WebSocket errors
-    socket.onerror = function(error) {
-        console.error('WebSocket error:', error);
-    };
-    
-    // Handle WebSocket close
-    socket.onclose = function() {
-        console.log('WebSocket connection closed');
-    };
+    }
 }
+    
+
 
 /**
  * Add a message to the chat display
