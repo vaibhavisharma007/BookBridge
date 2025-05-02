@@ -389,6 +389,44 @@ function loadChat(chatId, bookId, bookTitle) {
  * Connect to WebSocket for real-time messaging
  * @param {Number} chatId - Chat ID
  */
+/**
+ * Display a connection error message in the chat window
+ * @param {String} message - Error message to display
+ */
+function displayConnectionError(message) {
+    const chatMessages = document.getElementById('chat-messages');
+    if (chatMessages) {
+        // Remove any existing connection error message
+        const existingError = chatMessages.querySelector('.connection-error');
+        if (existingError) {
+            existingError.remove();
+        }
+        
+        // Add new error message
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'text-center py-3 text-danger connection-error';
+        errorDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i data-feather="alert-triangle"></i> ${message}
+            </div>
+        `;
+        chatMessages.appendChild(errorDiv);
+        
+        // Re-initialize feather icons if they're used
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
+    } else {
+        // Fallback to alert if chat messages container not found
+        console.error('Chat messages container not found, showing alert instead');
+        alert(`Connection Error: ${message}`);
+    }
+}
+
+/**
+ * Connect to WebSocket for real-time messaging
+ * @param {Number} chatId - Chat ID
+ */
 function connectToWebSocket(chatId) {
     // Close existing socket if open
     if (socket && socket.readyState === WebSocket.OPEN) {
