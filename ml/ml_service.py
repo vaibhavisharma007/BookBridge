@@ -113,7 +113,8 @@ class BookPricePredictor:
         }
         
         # Set prices based on conditions and genres with some randomness (prices in Rs.)
-        condition_values = {'New': 110, 'Like New': 85, 'Very Good': 65, 'Good': 50, 'Acceptable': 35, 'Poor': 20}
+        # Updated to ensure minimum price of ₹100 and generally less than ₹1000
+        condition_values = {'New': 450, 'Like New': 350, 'Very Good': 250, 'Good': 200, 'Acceptable': 150, 'Poor': 100}
         # Set price multipliers by genre - educational books tend to be more expensive
         genre_multipliers = {
             # Fiction categories
@@ -202,6 +203,10 @@ class BookPricePredictor:
                     random_factor = np.random.uniform(0.95, 1.05)
                     adjusted_price *= random_factor
                 
+                # Ensure price follows our business rules (between ₹100 and ₹1000)
+                adjusted_price = max(100.0, adjusted_price)
+                adjusted_price = min(1000.0, adjusted_price)
+                
                 # Return the price with source
                 return round(adjusted_price, 2)
             
@@ -235,8 +240,11 @@ class BookPricePredictor:
         random_factor = np.random.uniform(0.95, 1.05)
         predicted_price *= random_factor
         
-        # Ensure a minimum price (minimum price for books is 100 Rs as requested)
+        # Ensure a minimum price of ₹100
         predicted_price = max(100.0, predicted_price)
+        
+        # Cap maximum price at ₹1000 to keep prices reasonable
+        predicted_price = min(1000.0, predicted_price)
         
         return round(predicted_price, 2)
         

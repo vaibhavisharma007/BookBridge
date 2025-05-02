@@ -50,8 +50,22 @@ function loadBooks(filters = {}) {
             return;
         }
         
-        // Create book cards
-        books.forEach(book => {
+        // Create book cards, but filter out books with missing images
+        const validBooks = books.filter(book => book.image_url && book.image_url.trim() !== '');
+        
+        if (validBooks.length === 0) {
+            // No valid books found
+            booksContainer.innerHTML = `
+                <div class="col-12">
+                    <div class="alert alert-info">
+                        No books with valid images found. Try different search criteria or check back later.
+                    </div>
+                </div>
+            `;
+            return;
+        }
+        
+        validBooks.forEach(book => {
             const bookCard = createBookCard(book);
             booksContainer.appendChild(bookCard);
         });
@@ -108,8 +122,22 @@ function loadRecommendedBooks() {
             return;
         }
         
-        // Create book cards
-        books.forEach(book => {
+        // Create book cards, but filter out books with missing images
+        const validBooks = books.filter(book => book.image_url && book.image_url.trim() !== '');
+        
+        if (validBooks.length === 0) {
+            // No valid books found
+            container.innerHTML = `
+                <div class="col-12">
+                    <div class="alert alert-info">
+                        No recommendations with valid images available. Browse more books to get personalized suggestions.
+                    </div>
+                </div>
+            `;
+            return;
+        }
+        
+        validBooks.forEach(book => {
             const bookCard = createBookCard(book);
             container.appendChild(bookCard);
         });
