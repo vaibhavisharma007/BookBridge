@@ -115,6 +115,13 @@ func createTables() error {
                         interaction_type VARCHAR(20) CHECK (interaction_type IN ('view', 'search', 'favorite')),
                         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                 )`,
+                `CREATE TABLE IF NOT EXISTS chatbot_interactions (
+                        id SERIAL PRIMARY KEY,
+                        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                        query TEXT NOT NULL,
+                        response TEXT NOT NULL,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                )`,
         }
 
         for _, query := range queries {

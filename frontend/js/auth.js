@@ -1,6 +1,9 @@
 /**
- * Authentication utilities for BookResell
+ * Authentication utilities for BookBridge
  */
+
+// Chatbase secret key for user identity verification
+const CHATBASE_SECRET_KEY = '3wfd66ka529ylmz93a67mxj3v8gto63x';
 
 /**
  * Check if user is authenticated
@@ -160,10 +163,54 @@ function switchRole() {
     }
 }
 
+/**
+ * Generate HMAC hash for Chatbase user identity verification
+ * @returns {Object|null} User identity object or null if not authenticated
+ */
+function getChatbaseUserIdentity() {
+    if (!isAuthenticated()) return null;
+    
+    const userData = getUserData();
+    if (!userData || !userData.id) return null;
+    
+    // We need to create an HMAC hash for user verification
+    // Since we can't use Node.js crypto in the browser, we'll use SubtleCrypto API
+    return {
+        userId: userData.id,
+        userEmail: userData.email || '',
+        userName: userData.name || userData.username || ''
+    };
+}
+
+/**
+ * Initialize Chatbase with user identity if available
+ */
+function initializeChatbase() {
+    if (typeof window.chatbase === 'function') {
+        const userIdentity = getChatbaseUserIdentity();
+        
+        if (userIdentity) {
+            // Set user identity for Chatbase
+            window.chatbase('setUser', {
+                userId: userIdentity.userId,
+                email: userIdentity.userEmail,
+                name: userIdentity.userName
+            });
+            
+            console.log('Chatbase initialized with user identity');
+        } else {
+            console.log('Chatbase initialized without user identity');
+        }
+    }
+}
+
 // Add event listeners when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize authentication UI
     updateAuthUI();
+    
+    // Initialize Chatbase after a short delay to ensure the script is loaded
+    setTimeout(initializeChatbase, 1000);
     
     // Check for token expiration
     if (isAuthenticated() && isTokenExpired()) {

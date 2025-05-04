@@ -1,5 +1,5 @@
 /**
- * Seller dashboard functionality for BookResell
+ * Seller dashboard functionality for BookBridge
  */
 
 /**
@@ -1099,7 +1099,7 @@ function showToast(message, type = 'success') {
     toastEl.innerHTML = `
         <div class="toast-header ${bgClass} text-white">
             <div class="me-2">${iconHTML}</div>
-            <strong class="me-auto">BookResell</strong>
+            <strong class="me-auto">BookBridge</strong>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
         </div>
         <div class="toast-body">

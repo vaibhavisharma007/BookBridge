@@ -3,23 +3,330 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shopping Cart - BookResell</title>
-    <link rel="stylesheet" href="/css/styles.css">
-    <link rel="stylesheet" href="/css/cart.css">
+    <title>Shopping Cart - BookBridge</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/cart.css">
+    
+    <!-- Inline CSS improvements -->
+    <style>
+        /* Improved navbar styling */
+        header {
+            background-color: #fff;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .logo a {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4CAF50;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .logo a:hover {
+            color: #388E3C;
+        }
+        
+        .nav-links {
+            display: flex;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            align-items: center;
+        }
+        
+        .nav-links li {
+            margin-left: 25px;
+        }
+        
+        .nav-links a {
+            color: #333;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+            display: flex;
+            align-items: center;
+        }
+        
+        .nav-links a:hover {
+            color: #4CAF50;
+        }
+        
+        .nav-links a.active {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        
+        .cart-badge {
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+        
+        /* Improved cart styling */
+        .cart-section {
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            margin-top: 30px;
+            margin-bottom: 50px;
+        }
+        
+        .cart-header {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .cart-progress {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+        }
+        
+        .progress-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .step-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            color: #666;
+            margin-bottom: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .progress-step.active .step-circle {
+            background-color: #4CAF50;
+            color: white;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        }
+        
+        .progress-line {
+            height: 4px;
+            width: 100px;
+            background-color: #e0e0e0;
+            margin: 0 10px;
+        }
+        
+        .cart-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+        }
+        
+        #cart-items-container {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        .cart-items-header {
+            display: grid;
+            grid-template-columns: 3fr 1fr 1fr 1fr 0.5fr;
+            padding: 15px 0;
+            border-bottom: 2px solid #eee;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .cart-item {
+            display: grid;
+            grid-template-columns: 3fr 1fr 1fr 1fr 0.5fr;
+            padding: 20px 0;
+            border-bottom: 1px solid #eee;
+            align-items: center;
+        }
+        
+        .item-product {
+            display: flex;
+            align-items: center;
+        }
+        
+        .item-image {
+            width: 80px;
+            height: 120px;
+            object-fit: cover;
+            margin-right: 15px;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        #cart-sidebar {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 20px;
+            align-self: start;
+        }
+        
+        #cart-summary {
+            margin-bottom: 20px;
+        }
+        
+        .summary-title {
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+            color: #333;
+        }
+        
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        
+        .total-row {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .summary-divider {
+            height: 1px;
+            background-color: #ddd;
+            margin: 15px 0;
+        }
+        
+        .cart-actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        
+        .cart-actions a {
+            padding: 12px 20px;
+            border-radius: 4px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+        
+        .primary-button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .primary-button:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .secondary-button {
+            background-color: #f1f1f1;
+            color: #333;
+            border: 1px solid #ddd;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .secondary-button:hover {
+            background-color: #e7e7e7;
+        }
+        
+        .payment-methods {
+            margin-top: 30px;
+            text-align: center;
+        }
+        
+        .payment-icons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 10px;
+            font-size: 24px;
+            color: #666;
+        }
+        
+        .cart-help {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f0f7ff;
+            border-radius: 8px;
+            border-left: 4px solid #4285f4;
+        }
+        
+        .help-link {
+            display: inline-flex;
+            align-items: center;
+            color: #4285f4;
+            text-decoration: none;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        
+        .help-link i {
+            margin-right: 8px;
+        }
+        
+        .empty-cart-content {
+            text-align: center;
+            padding: 50px 20px;
+        }
+        
+        .empty-cart-icon {
+            font-size: 80px;
+            color: #ccc;
+            margin-bottom: 20px;
+        }
+    </style>
 </head>
 <body>
     <header>
         <nav>
             <div class="logo">
-                <a href="/">BookResell</a>
+                <a href="index.html">BookBridge</a>
             </div>
             <ul class="nav-links">
-                <li><a href="/">Home</a></li>
-                <li class="auth-required seller-only"><a href="/seller-dashboard.html">Seller Dashboard</a></li>
-                <li class="auth-required"><a href="/chat.html">Messages</a></li>
-                <li class="auth-required"><a href="/cart.html" class="active">Cart <span id="cart-count" class="cart-badge">0</span></a></li>
-                <li class="auth-not-required"><a href="/login.html">Login</a></li>
-                <li class="auth-not-required"><a href="/register.html">Register</a></li>
+                <li><a href="index.html">Home</a></li>
+                <li class="auth-required seller-only"><a href="seller-dashboard.html">Seller Dashboard</a></li>
+                <li class="auth-required"><a href="chat.html">Messages</a></li>
+                <li class="auth-required"><a href="cart.html" class="active">Cart <span id="cart-count" class="cart-badge">0</span></a></li>
+                <li class="auth-not-required"><a href="login.html">Login</a></li>
+                <li class="auth-not-required"><a href="register.html">Register</a></li>
                 <li class="auth-required"><a href="#" id="logout-btn">Logout</a></li>
             </ul>
         </nav>
@@ -27,26 +334,104 @@
 
     <main class="container">
         <section class="cart-section">
-            <h1>Shopping Cart</h1>
+            <div class="cart-header">
+                <h1>Your Shopping Cart</h1>
+                <div class="cart-progress">
+                    <div class="progress-step active">
+                        <div class="step-circle">1</div>
+                        <div class="step-label">Cart</div>
+                    </div>
+                    <div class="progress-line"></div>
+                    <div class="progress-step">
+                        <div class="step-circle">2</div>
+                        <div class="step-label">Checkout</div>
+                    </div>
+                    <div class="progress-line"></div>
+                    <div class="progress-step">
+                        <div class="step-circle">3</div>
+                        <div class="step-label">Payment</div>
+                    </div>
+                </div>
+            </div>
             
             <div id="cart-container">
                 <!-- Cart items will be added here dynamically -->
                 <div id="empty-cart-message" style="display: none;">
-                    <p>Your cart is empty. <a href="/">Browse books</a> to add items to your cart.</p>
-                </div>
-
-                <div id="cart-items">
-                    <!-- Cart items will be rendered here -->
-                </div>
-
-                <div id="cart-summary" style="display: none;">
-                    <div class="cart-total">
-                        <h3>Total:</h3>
-                        <h3 id="cart-total-amount">₹0.00</h3>
+                    <div class="empty-cart-content">
+                        <i class="fas fa-shopping-cart empty-cart-icon"></i>
+                        <h2>Your cart is empty</h2>
+                        <p>Looks like you haven't added any books to your cart yet.</p>
+                        <a href="index.html" class="primary-button">Browse Books</a>
                     </div>
-                    <div class="cart-actions">
-                        <a href="/" class="secondary-button">Continue Shopping</a>
-                        <a href="/checkout.html" class="primary-button">Proceed to Checkout</a>
+                </div>
+
+                <div class="cart-content">
+                    <div id="cart-items-container">
+                        <div class="cart-items-header">
+                            <div class="header-product">Product</div>
+                            <div class="header-price">Price</div>
+                            <div class="header-quantity">Quantity</div>
+                            <div class="header-total">Total</div>
+                            <div class="header-action"></div>
+                        </div>
+                        <div id="cart-items">
+                            <!-- Cart items will be rendered here -->
+                        </div>
+                    </div>
+
+                    <div id="cart-sidebar">
+                        <div id="cart-summary" style="display: none;">
+                            <h3 class="summary-title">Order Summary</h3>
+                            
+                            <div class="summary-row">
+                                <span>Subtotal</span>
+                                <span id="cart-subtotal">₹0.00</span>
+                            </div>
+                            
+                            <div class="summary-row">
+                                <span>Shipping</span>
+                                <span id="cart-shipping">₹40.00</span>
+                            </div>
+                            
+                            <div class="summary-row discount-row">
+                                <div class="discount-input">
+                                    <input type="text" id="discount-code" placeholder="Discount code">
+                                    <button id="apply-discount" class="secondary-button">Apply</button>
+                                </div>
+                            </div>
+                            
+                            <div class="summary-divider"></div>
+                            
+                            <div class="summary-row total-row">
+                                <span>Total</span>
+                                <span id="cart-total-amount">₹0.00</span>
+                            </div>
+                            
+                            <div class="cart-actions">
+                                <a href="index.html" class="secondary-button">
+                                    <i class="fas fa-arrow-left"></i> Continue Shopping
+                                </a>
+                                <a href="checkout.html" class="primary-button">
+                                    Proceed to Checkout <i class="fas fa-arrow-right"></i>
+                                </a>
+                            </div>
+                            
+                            <div class="payment-methods">
+                                <p>We accept:</p>
+                                <div class="payment-icons">
+                                    <i class="fab fa-cc-visa"></i>
+                                    <i class="fab fa-cc-mastercard"></i>
+                                    <i class="fab fa-cc-amex"></i>
+                                    <i class="fab fa-cc-paypal"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="cart-help">
+                            <h4>Need Help?</h4>
+                            <p>Our customer service team is here to help you with any questions about your order.</p>
+                            <a href="#" class="help-link"><i class="fas fa-headset"></i> Contact Support</a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -55,13 +440,37 @@
 
     <footer>
         <div class="container">
-            <p>&copy; 2025 BookResell - All rights reserved</p>
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>BookBridge</h3>
+                    <p>Your marketplace for buying and selling used books.</p>
+                </div>
+                <div class="footer-section">
+                    <h3>Quick Links</h3>
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="about.html">About Us</a></li>
+                        <li><a href="contact.html">Contact</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Connect With Us</h3>
+                    <div class="social-icons">
+                        <a href="#"><i class="fab fa-facebook"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 BookBridge - All rights reserved</p>
+            </div>
         </div>
     </footer>
 
     <div id="toast-container"></div>
 
-    <script src="/js/auth.js"></script>
-    <script src="/js/cart.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/cart.js"></script>
 </body>
 </html>

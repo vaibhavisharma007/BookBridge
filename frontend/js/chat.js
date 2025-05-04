@@ -1,5 +1,5 @@
 /**
- * Chat functionality for BookResell
+ * Chat functionality for BookBridge
  */
 
 // Global variables
@@ -19,6 +19,9 @@ function initializeChat() {
         return;
     }
     
+    // Initialize WebSocket connection
+    initializeWebSocket();
+    
     // Load user's chat sessions
     loadChatSessions();
     
@@ -26,9 +29,14 @@ function initializeChat() {
     const urlParams = new URLSearchParams(window.location.search);
     const bookId = urlParams.get('book_id');
     const sellerId = urlParams.get('seller_id');
+    const chatId = urlParams.get('chat_id');
     
+    // If chat_id is provided, load the existing chat
+    if (chatId) {
+        loadChat(chatId);
+    }
     // If book_id and seller_id are provided, start a new chat
-    if (bookId && sellerId) {
+    else if (bookId && sellerId) {
         startNewChat(bookId, sellerId);
     }
     
@@ -39,6 +47,74 @@ function initializeChat() {
             e.preventDefault();
             sendMessage();
         });
+    }
+}
+
+/**
+ * Initialize WebSocket connection
+ */
+function initializeWebSocket() {
+    const user = getUserData();
+    if (!user) return;
+    
+    // Close existing socket if any
+    if (socket) {
+        socket.close();
+    }
+    
+    // Create new WebSocket connection with token and params in query string
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const token = localStorage.getItem('token');
+    const urlParams = new URLSearchParams(window.location.search);
+    const bookId = urlParams.get('book_id');
+    const sellerId = urlParams.get('seller_id');
+    const chatId = urlParams.get('chat_id');
+    let wsUrl = `${protocol}//${window.location.host}/ws/chat?token=${encodeURIComponent(token)}`;
+    if (bookId && sellerId) {
+        wsUrl += `&book_id=${bookId}&seller_id=${sellerId}`;
+    }
+    if (chatId) {
+        wsUrl += `&chat_id=${chatId}`;
+    }
+    socket = new WebSocket(wsUrl);
+    // Set up WebSocket event handlers
+    socket.onopen = function() {
+        console.log('WebSocket connection established');
+        // No need to send auth message, token is in query param
+    };
+    socket.onmessage = function(event) {
+        const message = JSON.parse(event.data);
+        handleWebSocketMessage(message);
+    };
+    socket.onerror = function(error) {
+        console.error('WebSocket error:', error);
+        displayError('Connection error. Please try again.');
+    };
+    socket.onclose = function() {
+        console.log('WebSocket connection closed');
+        // Attempt to reconnect after 5 seconds
+        setTimeout(initializeWebSocket, 5000);
+    };
+}
+
+/**
+ * Handle incoming WebSocket messages
+ * @param {Object} message - The received message
+ */
+function handleWebSocketMessage(message) {
+    switch (message.type) {
+        case 'message':
+            appendMessage(message);
+            break;
+        case 'chat_created':
+            currentChatId = message.chat_id;
+            loadChat(message.chat_id);
+            break;
+        case 'error':
+            displayError(message.content);
+            break;
+        default:
+            console.log('Unknown message type:', message.type);
     }
 }
 
@@ -94,8 +170,13 @@ function loadChatSessions() {
     // Log user role for debugging
     console.log('User role:', userData.role);
     
-    fetch('/api/chats', {
-        headers: getAuthHeaders()
+    // Add a timestamp to prevent caching
+    const timestamp = new Date().getTime();
+    const url = `/api/chats?_=${timestamp}`;
+    
+    fetch(url, {
+        headers: getAuthHeaders(),
+        credentials: 'same-origin' // Include cookies
     })
     .then(response => {
         if (!response.ok) {
@@ -386,41 +467,43 @@ function loadChat(chatId, bookId, bookTitle) {
 }
 
 /**
- * Connect to WebSocket for real-time messaging
- * @param {Number} chatId - Chat ID
- */
-/**
- * Display a connection error message in the chat window
+ * Display a connection error message in the chat area
  * @param {String} message - Error message to display
  */
 function displayConnectionError(message) {
+    console.error('Connection error:', message);
+    
     const chatMessages = document.getElementById('chat-messages');
-    if (chatMessages) {
-        // Remove any existing connection error message
-        const existingError = chatMessages.querySelector('.connection-error');
-        if (existingError) {
-            existingError.remove();
-        }
-        
-        // Add new error message
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'text-center py-3 text-danger connection-error';
-        errorDiv.innerHTML = `
-            <div class="alert alert-danger">
-                <i data-feather="alert-triangle"></i> ${message}
-            </div>
-        `;
-        chatMessages.appendChild(errorDiv);
-        
-        // Re-initialize feather icons if they're used
-        if (typeof feather !== 'undefined') {
-            feather.replace();
-        }
-    } else {
-        // Fallback to alert if chat messages container not found
-        console.error('Chat messages container not found, showing alert instead');
-        alert(`Connection Error: ${message}`);
+    if (!chatMessages) return;
+    
+    // Remove any existing connection error message
+    const existingError = chatMessages.querySelector('.connection-error');
+    if (existingError) {
+        existingError.remove();
     }
+    
+    // Add new error message
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'alert alert-danger connection-error';
+    errorDiv.innerHTML = `
+        <i class="fas fa-exclamation-triangle"></i> ${message}
+        <button id="reconnect-button" class="btn btn-sm btn-outline-danger ml-3" onclick="reconnectWebSocket()">
+            Reconnect
+        </button>
+    `;
+    chatMessages.appendChild(errorDiv);
+}
+
+/**
+ * Reconnect to the WebSocket
+ */
+function reconnectWebSocket() {
+    // Get the current chat ID from the URL or the currentChatId variable
+    const urlParams = new URLSearchParams(window.location.search);
+    const chatId = urlParams.get('chat_id') || currentChatId || 0;
+    
+    console.log('Attempting to reconnect to WebSocket for chat ID:', chatId);
+    connectToWebSocket(chatId);
 }
 
 /**
@@ -428,309 +511,212 @@ function displayConnectionError(message) {
  * @param {Number} chatId - Chat ID
  */
 function connectToWebSocket(chatId) {
-    // Close existing socket if open
-    if (socket && socket.readyState === WebSocket.OPEN) {
+    console.log(`Connecting to WebSocket for chat ID: ${chatId}`);
+    
+    // Close existing connection if any
+    if (socket && socket.readyState !== WebSocket.CLOSED) {
+        console.log('Closing existing WebSocket connection');
         socket.close();
     }
-    
-    // Get the JWT token from the authentication utility
+
+    // Get authentication token
     const token = localStorage.getItem('token');
     if (!token) {
         console.error('No authentication token found');
-        alert('You need to be logged in to use the chat feature.');
-        window.location.href = 'login.html';
+        displayConnectionError('Authentication error. Please log in again.');
         return;
     }
+
+    // Get book_id and seller_id from URL parameters if available (for new chats)
+    const urlParams = new URLSearchParams(window.location.search);
+    const bookId = urlParams.get('book_id');
+    const sellerId = urlParams.get('seller_id');
+
+    // Determine WebSocket URL based on whether we're creating a new chat or joining an existing one
+    let wsUrl;
     
     // Determine WebSocket protocol (wss for HTTPS, ws for HTTP)
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
     
-    // If it's a new chat (chatId = 0), we need to include the book ID
-    let wsUrl;
-    const urlParams = new URLSearchParams(window.location.search);
-    
-    // Get user data
-    const user = getUserData();
-    if (!user) {
-        console.error('No user data available');
-        displayConnectionError('Authentication error. Please try logging in again.');
-        return;
-    }
-    
-    console.log('User role in connectToWebSocket:', user.role);
-    
-    if (chatId === 0) {
-        // Get the book ID from URL parameters
-        const bookId = urlParams.get('book_id');
-        const sellerId = urlParams.get('seller_id');
+    if (chatId === 0 && bookId && sellerId) {
+        // Creating a new chat
+        console.log(`Creating new chat for book ${bookId} with seller ${sellerId}`);
+        wsUrl = `${protocol}//${host}/api/ws/chat?book_id=${bookId}&seller_id=${sellerId}&token=${encodeURIComponent(token)}`;
+        console.log("WebSocket URL for new chat:", wsUrl);
         
-        if (!bookId) {
-            console.error('No book ID available for new chat');
-            displayConnectionError('Could not start chat: missing book information.');
-            return;
-        }
-        
-        if (!sellerId) {
-            console.error('No seller ID available for new chat');
-            displayConnectionError('Could not start chat: missing seller information.');
-            return;
-        }
-        
-        // For starting a new chat, we need both book ID and seller ID
-        wsUrl = `${protocol}//${window.location.host}/ws/chat/${bookId}`;
-        
-        // Add seller ID as query parameter for buyer-initiated chats
-        if (user.role === 'buyer') {
-            wsUrl += `?seller_id=${sellerId}`;
-            console.log('Adding seller_id parameter for buyer-initiated chat:', sellerId);
-        } else if (user.role === 'seller') {
-            // For sellers, we would need a buyer_id to initiate a chat
-            // This is typically not how it works (buyers initiate chats)
-            // But if we have a buyer_id from the URL, we can use it
-            const buyerId = urlParams.get('buyer_id');
-            if (buyerId) {
-                wsUrl += `?buyer_id=${buyerId}`;
-                console.log('Adding buyer_id parameter for seller-initiated chat:', buyerId);
-            } else {
-                console.warn('Sellers need a buyer_id to initiate chats.');
-                displayConnectionError('Sellers need a buyer ID to initiate chats.');
-                return;
-            }
-        } else {
-            console.warn('Unknown user role:', user.role);
-            displayConnectionError('Unknown user role. Please try logging in again.');
-            return;
-        }
-        
-        console.log('Connecting to WebSocket URL for new chat:', wsUrl);
+        // Set a flag to indicate this is a new chat
+        sessionStorage.setItem('isNewChat', 'true');
     } else {
-        // For existing chats, identify the book from the chat list
-        const chat = activeChats.find(c => c.chat_id === chatId);
-        if (!chat || !chat.book_id) {
-            console.error('Could not find book ID for chat:', chatId);
-            displayConnectionError('Could not find details for this chat.');
-            return;
-        }
-        
-        // Use the book ID for the WebSocket connection
-        wsUrl = `${protocol}//${window.location.host}/ws/chat/${chat.book_id}`;
-        
-        // Always add the correct parameter based on role
-        if (user.role === 'seller') {
-            // Make sure we have a buyer_id
-            if (!chat.buyer_id) {
-                console.error('Missing buyer_id for seller chat:', chatId);
-                displayConnectionError('Missing buyer information for this chat.');
-                return;
-            }
-            wsUrl += `?buyer_id=${chat.buyer_id}`;
-            console.log('Adding buyer_id parameter for seller chat:', chat.buyer_id);
-        } else if (user.role === 'buyer') {
-            // Make sure we have a seller_id
-            if (!chat.seller_id) {
-                console.error('Missing seller_id for buyer chat:', chatId);
-                displayConnectionError('Missing seller information for this chat.');
-                return;
-            }
-            wsUrl += `?seller_id=${chat.seller_id}`;
-            console.log('Adding seller_id parameter for buyer chat:', chat.seller_id);
-        } else {
-            console.warn('Unknown user role:', user.role);
-            displayConnectionError('Unknown user role. Please try logging in again.');
-            return;
-        }
-        
-        console.log('Connecting to WebSocket URL for existing chat:', wsUrl);
+        // Joining an existing chat
+        console.log(`Joining existing chat ${chatId}`);
+        currentChatId = chatId;
+        wsUrl = `${protocol}//${host}/api/ws/chat?chat_id=${chatId}&token=${encodeURIComponent(token)}`;
+        console.log("WebSocket URL for existing chat:", wsUrl);
     }
     
-    // Initially set a connection error handler that shows detailed information
-    let connectionAttempted = false;
-    const connectionTimeout = setTimeout(() => {
-        if (!connectionAttempted) {
-            console.error('WebSocket connection timeout');
-            alert('Chat connection timed out. Please check your internet connection and try again.');
-        }
-    }, 5000); // 5 second timeout
-    
+    // Create WebSocket connection
     try {
-        console.log('Creating new WebSocket connection to:', wsUrl);
-        
-        // Get the token for authentication
-        const token = localStorage.getItem('token');
-        if (!token) {
-            console.error('No token found for WebSocket authentication');
-            displayConnectionError('Authentication error. Please try logging in again.');
-            return;
-        }
-        
-        // Add the token as a request header when establishing connection if supported
-        const wsHeaders = {
-            'Authorization': `Bearer ${token}`
-        };
-        
-        // For browsers that don't support custom headers in WebSocket constructor,
-        // we'll authenticate with the first message after connection
-        
-        // Create new WebSocket connection with better error handling
+        console.log(`Connecting to WebSocket at ${wsUrl}`);
         socket = new WebSocket(wsUrl);
-        connectionAttempted = true;
         
-        socket.onopen = function() {
-            clearTimeout(connectionTimeout);
-            console.log('WebSocket opened successfully, sending authentication token');
+        // Connection opened
+        socket.addEventListener('open', (event) => {
+            console.log('WebSocket connection established');
             
-            try {
-                // Send authentication token as first message (backup authentication method)
-                this.send(JSON.stringify({
-                    type: 'auth',
-                    token: token
-                }));
-                console.log('WebSocket authentication token sent successfully');
-                
-                // Let the user know connection is successful
-                const chatMessages = document.getElementById('chat-messages');
-                if (chatMessages && chatMessages.querySelector('.connection-error')) {
-                    chatMessages.querySelector('.connection-error').remove();
-                }
-            } catch (sendError) {
-                console.error('Error sending WebSocket authentication:', sendError);
-                displayConnectionError('Failed to authenticate chat connection. Please try again.');
-            }
-        };
-        
-        socket.onmessage = function(event) {
-            console.log('WebSocket message received:', event.data);
-            let data;
-            try {
-                data = JSON.parse(event.data);
-            } catch (e) {
-                console.error('Error parsing WebSocket message:', e);
-                return;
+            // Show connected status
+            const connectionStatus = document.getElementById('connection-status');
+            if (connectionStatus) {
+                connectionStatus.textContent = 'Connected';
+                connectionStatus.className = 'text-success';
             }
             
-            if (data.type === 'message') {
-                console.log('Message received:', data);
-                // Create message object
-                const message = {
-                    id: data.data?.message_id || Date.now(), // Fallback if no message_id
-                    sender_id: data.sender_id,
-                    sender_name: data.data?.sender_name || 'Unknown',
-                    content: data.content,
-                    created_at: data.timestamp || new Date().toISOString(),
-                    is_self_sender: data.sender_id === getUserData().id
-                };
-                
-                // Check if we're using Deep Chat
-                if (deepChatInstance) {
-                    // Add message to Deep Chat
-                    const user = getUserData();
-                    const isFromCurrentUser = message.sender_id === user.id;
-                    
-                    deepChatInstance.addMessage({
-                        role: isFromCurrentUser ? 'user' : 'assistant',
-                        text: message.content,
-                        name: isFromCurrentUser ? user.username : message.sender_name
-                    });
-                } else {
-                    // Fall back to the old message display method
-                    addMessageToChat(message);
-                    
-                    // Scroll to the bottom
-                    const chatMessages = document.getElementById('chat-messages');
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                }
-                
-                // Show notification if needed
-                if (!message.is_self_sender) {
-                    // Could add browser notification here
-                    // Note: No audio notification for now as we don't have the sound file
-                    // Just log the message reception
-                    console.log('New message received from', message.sender_name);
-                    
-                    // Flash the title to notify the user if the tab is not active
-                    if (document.hidden) {
-                        let originalTitle = document.title;
-                        document.title = '📩 New Message - BookResell';
-                        
-                        // Restore the original title when the tab becomes active again
-                        window.addEventListener('focus', function onFocus() {
-                            document.title = originalTitle;
-                            window.removeEventListener('focus', onFocus);
-                        });
+            // Hide any previous connection errors
+            const connectionError = document.getElementById('connection-error');
+            if (connectionError) {
+                connectionError.style.display = 'none';
+            }
+            
+            // If this is a new chat, send an initial greeting message
+            if (sessionStorage.getItem('isNewChat') === 'true') {
+                console.log('Sending initial greeting for new chat');
+                setTimeout(() => {
+                    // Get the book title from the chat header if available
+                    let bookTitle = 'this book';
+                    const chatHeader = document.getElementById('chat-header');
+                    if (chatHeader) {
+                        const titleElement = chatHeader.querySelector('h5');
+                        if (titleElement) {
+                            bookTitle = titleElement.textContent;
+                        }
                     }
-                }
-            } else if (data.type === 'chat_created') {
-                console.log('New chat created:', data);
-                // Save the new chat id
-                currentChatId = data.chat_id;
-                // Update URL to include chat ID
-                const currentUrl = new URL(window.location.href);
-                currentUrl.searchParams.set('chat_id', currentChatId);
-                window.history.replaceState({}, '', currentUrl);
-                // Refresh chat list
-                loadChatSessions();
-            } else if (data.type === 'history') {
-                // History already loaded by the API
-                console.log('Chat history received');
-            } else if (data.type === 'error') {
-                console.error('WebSocket error:', data.content);
-                alert(`Chat error: ${data.content}`); 
-            } else if (data.type === 'connection_success') {
-                console.log('WebSocket connection successful:', data.content);
-            } else {
-                console.log('Unknown message type:', data.type);
+                    
+                    // Try two methods to send the initial message
+                    // Method 1: Direct WebSocket message
+                    const initialMessage = {
+                        type: 'message',
+                        content: `Hello! I'm interested in ${bookTitle}. Is it still available?`
+                    };
+                    
+                    if (socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify(initialMessage));
+                        console.log('Initial greeting sent via WebSocket');
+                    } else {
+                        console.error('Socket not open, trying alternative method');
+                        
+                        // Method 2: Use the sendMessage function
+                        const messageInput = document.getElementById('message-input');
+                        if (messageInput) {
+                            messageInput.value = `Hello! I'm interested in ${bookTitle}. Is it still available?`;
+                            sendMessage();
+                            console.log('Initial greeting sent via sendMessage function');
+                        }
+                    }
+                    
+                    // Clear the new chat flag
+                    sessionStorage.removeItem('isNewChat');
+                }, 1000); // Slight delay to ensure everything is ready
             }
-        };
-        
-        socket.onerror = function(error) {
-            clearTimeout(connectionTimeout);
-            console.error('WebSocket error occurred:', error);
-            displayConnectionError('Chat connection error. Please try refreshing the page.');
-        };
-        
-        socket.onclose = function(event) {
-            clearTimeout(connectionTimeout);
-            console.log('WebSocket connection closed with code:', event.code);
-            if (!event.wasClean) {
-                displayConnectionError('Chat connection was interrupted. Please refresh the page to reconnect.');
+            
+            // If this is a new chat, send an initial message
+            if (chatId === 0 && bookId && sellerId) {
+                setTimeout(() => {
+                    sendMessage("Hi, I'm interested in this book. Is it still available?");
+                }, 1000);
             }
-        };
-    } catch (connError) {
-        clearTimeout(connectionTimeout);
-        console.error('Failed to create WebSocket connection:', connError);
-        displayConnectionError('Failed to establish chat connection. Please try again later.');
-        return;
-    }
+        });
 
-    // Helper function to display connection errors in the UI
-    function displayConnectionError(message) {
-        const chatMessages = document.getElementById('chat-messages');
-        if (chatMessages) {
-            // Remove any existing connection error message
-            const existingError = chatMessages.querySelector('.connection-error');
-            if (existingError) {
-                existingError.remove();
+        // Listen for messages
+        socket.addEventListener('message', (event) => {
+            console.log('WebSocket message received:', event.data);
+            
+            try {
+                const message = JSON.parse(event.data);
+                
+                // Handle different message types
+                switch (message.type) {
+                    case 'message':
+                        // Regular chat message
+                        console.log('Chat message received:', message);
+                        addMessageToChat(message);
+                        break;
+                    
+                    case 'chat_created':
+                        // New chat created
+                        console.log('New chat created:', message);
+                        currentChatId = message.chat_id;
+                        
+                        // Update the URL to include the new chat ID
+                        const currentUrl = new URL(window.location.href);
+                        currentUrl.searchParams.delete('book_id');
+                        currentUrl.searchParams.delete('seller_id');
+                        currentUrl.searchParams.set('chat_id', currentChatId);
+                        window.history.replaceState({}, '', currentUrl);
+                        
+                        // Refresh the chat list to include the new chat
+                        setTimeout(loadChatSessions, 1000);
+                        break;
+                    
+                    case 'connection_success':
+                        console.log('Connection success:', message.content);
+                        break;
+                    
+                    case 'error':
+                        console.error('WebSocket error message:', message.content);
+                        displayConnectionError(message.content);
+                        break;
+                    
+                    case 'history':
+                        console.log('Chat history received:', message.messages);
+                        // Display chat history
+                        if (message.messages && Array.isArray(message.messages)) {
+                            message.messages.forEach(msg => {
+                                addMessageToChat(msg);
+                            });
+                        }
+                        break;
+                        
+                    default:
+                        console.log('Unknown message type:', message.type);
+                }
+            } catch (error) {
+                console.error('Error parsing WebSocket message:', error);
+            }
+        });
+
+        // Connection closed
+        socket.addEventListener('close', (event) => {
+            console.log('WebSocket connection closed:', event);
+            
+            // Show disconnected status
+            const connectionStatus = document.getElementById('connection-status');
+            if (connectionStatus) {
+                connectionStatus.textContent = 'Disconnected';
+                connectionStatus.className = 'text-danger';
             }
             
-            // Add new error message
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'text-center py-3 text-danger connection-error';
-            errorDiv.innerHTML = `
-                <div class="alert alert-danger">
-                    <i data-feather="alert-triangle"></i> ${message}
-                </div>
-            `;
-            chatMessages.appendChild(errorDiv);
-            
-            // Re-initialize feather icons if they're used
-            if (typeof feather !== 'undefined') {
-                feather.replace();
+            // Show reconnect button
+            const reconnectButton = document.getElementById('reconnect-button');
+            if (reconnectButton) {
+                reconnectButton.style.display = 'inline-block';
             }
-        }
+            
+            // Display connection error if it wasn't a normal closure
+            if (event.code !== 1000) {
+                displayConnectionError('Connection lost. Please try reconnecting.');
+            }
+        });
+
+        // Connection error
+        socket.addEventListener('error', (event) => {
+            console.error('WebSocket error:', event);
+            displayConnectionError('Connection error. Please try again later.');
+        });
+    } catch (error) {
+        console.error('Error creating WebSocket connection:', error);
+        displayConnectionError(`Failed to create WebSocket connection: ${error.message}`);
     }
 }
-    
-
 
 /**
  * Add a message to the chat display
@@ -760,222 +746,240 @@ function addMessageToChat(message) {
 }
 
 /**
- * Send a message via WebSocket
- * Note: This function is kept for backward compatibility, but messages are
- * now primarily sent via Deep Chat's requestInterceptor
+ * Send a message in the current chat
  */
 function sendMessage() {
-    const messageInput = document.getElementById('message-input');
-    const sendButton = document.querySelector('#message-form button[type="submit"]');
-    const content = messageInput.value.trim();
-    
-    if (!content) {
-        // Nothing to send
-        return;
-    }
-    
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
-        alert('Chat connection lost. Please refresh the page and try again.');
-        return;
-    }
-    
     if (!currentChatId) {
-        console.error('No active chat ID');
-        alert('No active chat. Please select a chat or start a new one.');
+        displayError('No active chat selected');
         return;
     }
     
-    // Disable input and button while sending
-    messageInput.disabled = true;
-    if (sendButton) sendButton.disabled = true;
+    const messageInput = document.getElementById('message-input');
+    const message = messageInput.value.trim();
     
-    try {
-        // Send message
+    if (!message) {
+        return;
+    }
+    
+    // Clear input
+    messageInput.value = '';
+    
+    // Send message through WebSocket
+    if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({
             type: 'message',
-            content: content,
-            chat_id: currentChatId
+            chat_id: currentChatId,
+            content: message
         }));
-        
-        // Clear input
-        messageInput.value = '';
-        
-        // Add message to UI immediately for better UX (optimistic UI)
-        const user = getUserData();
-        const message = {
-            id: Date.now(),
-            sender_id: user.id,
-            sender_name: user.username,
-            content: content,
-            created_at: new Date().toISOString(),
-            is_self_sender: true
-        };
-        
-        // If using Deep Chat, add to Deep Chat instead
-        if (deepChatInstance) {
-            deepChatInstance.addMessage({
-                role: 'user',
-                text: content,
-                name: user.username
-            });
-        } else {
-            // Fall back to old UI
-            addMessageToChat(message);
-            
-            // Scroll to the bottom
-            const chatMessages = document.getElementById('chat-messages');
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-    } catch (error) {
-        console.error('Error sending message:', error);
-        alert('Failed to send message. Please try again.');
-    } finally {
-        // Re-enable input and button
-        messageInput.disabled = false;
-        if (sendButton) sendButton.disabled = false;
-        messageInput.focus();
+    } else {
+        displayError('Connection lost. Please try again.');
+        // Attempt to reconnect
+        initializeWebSocket();
     }
 }
 
 /**
- * Start a new chat with a seller about a book
+ * Append a message to the chat window
+ * @param {Object} message - The message to append
+ */
+function appendMessage(message) {
+    const chatArea = document.getElementById('chat-area');
+    if (!chatArea) return;
+    
+    const user = getUserData();
+    const isSelf = message.sender_id === user.id;
+    
+    const messageElement = document.createElement('div');
+    messageElement.className = `message ${isSelf ? 'message-self' : 'message-other'}`;
+    
+    // Format timestamp
+    const timestamp = new Date(message.timestamp);
+    const timeString = timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    messageElement.innerHTML = `
+        <div class="message-content">
+            <div class="message-text">${message.content}</div>
+            <div class="message-time">${timeString}</div>
+        </div>
+    `;
+    
+    chatArea.appendChild(messageElement);
+    chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+/**
+ * Load a chat session
+ * @param {Number} chatId - The chat ID to load
+ */
+function loadChat(chatId) {
+    if (!chatId) return;
+    
+    // Show loading indicator
+    document.getElementById('chat-loading').style.display = 'block';
+    document.getElementById('chat-area').style.display = 'none';
+    document.getElementById('chat-input-container').style.display = 'none';
+    
+    // Fetch chat details and messages
+    fetch(`/api/chats/${chatId}`, {
+        headers: getAuthHeaders()
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Failed to load chat');
+        }
+        return response.json();
+    })
+    .then(chat => {
+        // Update chat header
+        const user = getUserData();
+        const otherUserName = user.role === 'buyer' ? chat.seller_name : chat.buyer_name;
+        document.getElementById('chat-header').innerHTML = `
+            <h5 class="mb-0">Chat with ${otherUserName}</h5>
+            <a href="book-detail.html?id=${chat.book_id}" id="view-book-link">View Book</a>
+        `;
+        
+        // Show chat area and input
+        document.getElementById('chat-loading').style.display = 'none';
+        document.getElementById('chat-area').style.display = 'block';
+        document.getElementById('chat-input-container').style.display = 'block';
+        
+        // Clear existing messages
+        const chatArea = document.getElementById('chat-area');
+        chatArea.innerHTML = '';
+        
+        // Add messages to chat area
+        if (chat.messages && chat.messages.length > 0) {
+            chat.messages.forEach(message => {
+                appendMessage(message);
+            });
+        }
+        
+        // Set current chat ID
+        currentChatId = chatId;
+        
+        // Update URL
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set('chat_id', chatId);
+        window.history.replaceState({}, '', currentUrl);
+    })
+    .catch(error => {
+        console.error('Error loading chat:', error);
+        displayError('Failed to load chat. Please try again.');
+        document.getElementById('chat-loading').style.display = 'none';
+    });
+}
+
+/**
+ * Display an error message to the user
+ * @param {String} message - The error message to display
+ */
+function displayError(message) {
+    // Create error alert
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-danger alert-dismissible fade show';
+    alert.role = 'alert';
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    
+    // Add to page
+    const container = document.querySelector('.container');
+    container.insertBefore(alert, container.firstChild);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        alert.remove();
+    }, 5000);
+}
+
+/**
+ * Start a new chat with a seller
  * @param {Number} bookId - Book ID
  * @param {Number} sellerId - Seller ID
  */
 function startNewChat(bookId, sellerId) {
+    console.log(`Starting new chat for book ${bookId} with seller ${sellerId}`);
+    
+    // Validate parameters
+    if (!bookId || !sellerId) {
+        console.error('Missing required parameters for startNewChat');
+        displayError('Missing book or seller information. Please try again.');
+        return;
+    }
+    
+    // Check if user is authenticated
+    if (!isAuthenticated()) {
+        window.location.href = `login.html?redirect=chat.html?book_id=${bookId}&seller_id=${sellerId}`;
+        return;
+    }
+    
+    // Get user data
     const user = getUserData();
     
     // Only buyers can initiate chats
     if (user.role !== 'buyer') {
-        alert('Only buyers can initiate chats with sellers.');
-        window.location.href = 'index.html';
+        displayError('Only buyers can initiate chats with sellers.');
         return;
     }
     
-    // First, load all chats to check if a chat already exists
-    fetch('/api/chats', {
-        headers: getAuthHeaders()
-    })
-    .then(response => response.json())
-    .then(chats => {
-        // Check if a chat already exists for this book
-        const existingChat = chats.find(chat => 
-            chat.book_id.toString() === bookId.toString() && 
-            chat.seller_id.toString() === sellerId.toString()
-        );
-        
-        if (existingChat) {
-            // Chat already exists, just open it
-            // Find the corresponding chat item and click it
-            setTimeout(() => {
-                const chatItem = document.querySelector(`.chat-list-item[data-chat-id="${existingChat.chat_id}"]`);
-                if (chatItem) {
-                    chatItem.click();
-                } else {
-                    // Fallback: load the chat directly
-                    loadChat(existingChat.chat_id, existingChat.book_id, existingChat.book_title);
-                }
-            }, 500); // Small delay to ensure the chat list is loaded
-        } else {
-            // No existing chat, we need to create one
-            // For a real chat, the chat will be created when connecting to the WebSocket
-            // Let's connect to the WebSocket and let the server create the chat
-            fetch(`/api/books/${bookId}`, {
-                headers: getAuthHeaders()
-            })
-            .then(response => response.json())
-            .then(book => {
-                // Store book ID and seller ID for WebSocket connection
-                // Set them in URL parameters so that the connectToWebSocket function can use them
-                const currentUrl = new URL(window.location.href);
-                currentUrl.searchParams.set('book_id', bookId);
-                currentUrl.searchParams.set('seller_id', sellerId);
-                window.history.replaceState({}, '', currentUrl);
-                
-                // Connect to WebSocket which will create the chat
-                connectToWebSocket(0); // A temporary chatId, the server will create the real one
-                
-                // Update UI to show we're in a chat about this book
-                const chatHeader = document.getElementById('chat-header');
+    // Clear current chat
+    clearChat();
+    
+    // Update URL with book_id and seller_id parameters
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.delete('chat_id');
+    currentUrl.searchParams.set('book_id', bookId);
+    currentUrl.searchParams.set('seller_id', sellerId);
+    window.history.replaceState({}, '', currentUrl);
+    
+    // Set current chat ID to 0 (new chat)
+    currentChatId = 0;
+    
+    // Get book details
+    fetch(`api/books/${bookId}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Failed to fetch book details: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(book => {
+            console.log('Book details:', book);
+            
+            // Update chat header with book information
+            const chatHeader = document.getElementById('chat-header');
+            if (chatHeader) {
                 chatHeader.innerHTML = `
-                    <h5 class="mb-0">Chat about "${book.title}"</h5>
-                    <a href="book-detail.html?id=${book.id}" id="view-book-link">View Book</a>
-                `;
-                
-                // Show the chat input
-                const chatInputContainer = document.getElementById('chat-input-container');
-                if (chatInputContainer) chatInputContainer.style.display = 'flex';
-                
-                // Hide the "select chat" message
-                const selectChatMessage = document.getElementById('select-chat-message');
-                if (selectChatMessage) selectChatMessage.style.display = 'none';
-                
-                // Initialize and show Deep Chat for the new conversation
-                const chatMessages = document.getElementById('chat-messages');
-                const chatArea = document.getElementById('chat-area');
-                const chatLoading = document.getElementById('chat-loading');
-                
-                // Hide the old UI elements
-                if (chatLoading) chatLoading.style.display = 'none';
-                
-                // Show the chat area with Deep Chat
-                if (chatArea) {
-                    chatArea.style.display = 'block';
-                    chatArea.innerHTML = '';
-                    
-                    // Create and configure Deep Chat
-                    const deepChatElement = document.createElement('deep-chat');
-                    deepChatElement.style.height = '400px';
-                    deepChatElement.style.width = '100%';
-                    chatArea.appendChild(deepChatElement);
-                    
-                    // Initialize Deep Chat instance
-                    deepChatInstance = deepChatElement;
-                    
-                    // Add a welcome message
-                    deepChatInstance.addMessage({
-                        role: 'assistant',
-                        text: `Start a conversation with the seller about "${book.title}"!`,
-                        name: 'System'
-                    });
-                    
-                    // Configure Deep Chat for WebSocket communication
-                    deepChatInstance.requestInterceptor = (request) => {
-                        if (socket && socket.readyState === WebSocket.OPEN) {
-                            const message = {
-                                type: 'message',
-                                content: request.text,
-                                chat_id: currentChatId
-                            };
-                            socket.send(JSON.stringify(message));
-                        } else {
-                            console.error('WebSocket not connected!');
-                            return { error: 'WebSocket not connected' };
-                        }
-                        return false; // Prevent default HTTP request
-                    };
-                } else {
-                    // Fallback to the old UI
-                    chatMessages.innerHTML = `
-                        <div class="text-center py-4">
-                            <p class="text-muted">Start a conversation with the seller about "${book.title}"!</p>
+                    <div class="d-flex align-items-center">
+                        <img src="${book.image_url || 'images/default-book.jpg'}" alt="${book.title}" class="chat-book-image me-3">
+                        <div>
+                            <h5 class="mb-1">${book.title}</h5>
+                            <p class="text-muted mb-0">Chat with seller about this book</p>
                         </div>
-                    `;
+                    </div>
+                `;
+            }
+            
+            // Connect to WebSocket for the new chat
+            connectToWebSocket(0);
+            
+            // Show the chat interface
+            document.getElementById('chat-container').style.display = 'block';
+            document.getElementById('empty-state').style.display = 'none';
+            
+            // Focus on the message input
+            setTimeout(() => {
+                const messageInput = document.getElementById('message-input');
+                if (messageInput) {
+                    messageInput.focus();
                 }
-                
-                // Refresh chat list after a short delay to include the new chat
-                setTimeout(loadChatSessions, 1000);
-            })
-            .catch(error => {
-                console.error('Error loading book details:', error);
-                alert('Failed to load book details. Please try again.');
-            });
-        }
-    })
-    .catch(error => {
-        console.error('Error loading chats:', error);
-        alert('Failed to load chats. Please try again.');
-    });
+            }, 500);
+        })
+        .catch(error => {
+            console.error('Error fetching book details:', error);
+            displayError(`Failed to load book details: ${error.message}`);
+        });
 }
 
 /**
@@ -983,51 +987,66 @@ function startNewChat(bookId, sellerId) {
  * This is used on the index page and other pages
  */
 function initBookRecommendationChatbot() {
-    // Find all book assistant containers in the page
+    console.log('Initializing book recommendation chatbot...');
+    
+    // Find all chatbot containers
     const containers = document.querySelectorAll('.book-assistant-container');
     if (containers.length === 0) {
-        console.log('No book assistant containers found');
-        return; // No containers found, nothing to do
+        console.log('No chatbot containers found on this page');
+        return;
     }
     
-    console.log('Found', containers.length, 'book assistant containers');
-    
     // Define the initialization logic that will run after Deep Chat library is fully loaded
-    const initializeDeepChat = () => {
+    const initializeDeepChat = function() {
         containers.forEach((container, index) => {
             try {
-                console.log(`Initializing Deep Chat in container #${index}: ${container.id}`);
+                console.log('Initializing book assistant in container', container.id || index);
                 
-                // Check if this container already has a Deep Chat element
-                const existingChat = container.querySelector('deep-chat');
-                if (existingChat) {
-                    console.log('Deep Chat already exists in this container, skipping');
-                    return;
-                }
-                
-                // Clear previous content
-                container.innerHTML = '';
-                
-                // Create a new Deep Chat element for this container
+                // Create a new Deep Chat element
                 const chatbotElement = document.createElement('deep-chat');
                 
-                // Configure the chatbot
-                chatbotElement.style.height = '400px';
+                // Set styles
+                chatbotElement.style.height = '100%';
                 chatbotElement.style.width = '100%';
-                chatbotElement.style.border = '1px solid #e9ecef';
-                chatbotElement.style.borderRadius = '0.25rem';
-                chatbotElement.classList.add('book-assistant');
-                chatbotElement.id = `book-assistant-${container.id || index}`;
                 
-                // Set up the connection to the API
-                chatbotElement.setAttribute('directConnection', 'true');
-                chatbotElement.setAttribute('requestUrl', '/api/chatbot');
+                // Configure the chatbot
+                chatbotElement.directConnection = true;
+                chatbotElement.requestUrl = '/api/chatbot';
+                chatbotElement.requestBodyFormat = 'json';
+                
+                // Set up the request transformer to match the backend API format
+                chatbotElement.requestTransformer = (request) => {
+                    console.log("Sending request to chatbot:", request);
+                    return {
+                        query: request.text
+                    };
+                };
+                
+                // Set up the response transformer to handle the backend API response
+                chatbotElement.responseTransformer = (response) => {
+                    console.log("Chatbot response:", response);
+                    if (response && response.response) {
+                        let formattedResponse = response.response;
+                        
+                        // If there are book recommendations, add them to the response
+                        if (response.books && response.books.length > 0) {
+                            formattedResponse += "\n\n**Book Recommendations:**";
+                            response.books.forEach((book, i) => {
+                                formattedResponse += `\n- [${book.title} by ${book.author}](book-detail.html?id=${book.id})`;
+                            });
+                        }
+                        
+                        // Return the formatted response
+                        return { text: formattedResponse };
+                    } else {
+                        return { text: "Sorry, I couldn't process your request. Please try again." };
+                    }
+                };
                 
                 // Welcome message
-                const welcomeMessage = [
-                    { role: 'assistant', text: 'Hello! I\'m the BookResell Assistant. How can I help you find books today?' }
+                chatbotElement.initialMessages = [
+                    { role: 'assistant', text: 'Hello! I\'m BookBridge, your book assistant. How can I help you find books today? You can ask me to find books by title, author, or genre.' }
                 ];
-                chatbotElement.initialMessages = welcomeMessage;
                 
                 // Add authentication if available
                 if (isAuthenticated()) {
@@ -1036,10 +1055,18 @@ function initBookRecommendationChatbot() {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     };
+                } else {
+                    chatbotElement.requestHeaders = {
+                        'Content-Type': 'application/json'
+                    };
                 }
                 
                 // Add to the DOM
+                container.innerHTML = ''; // Clear any loading indicators
                 container.appendChild(chatbotElement);
+                
+                // Store the instance globally for debugging
+                window.chatbotInstance = chatbotElement;
                 
                 console.log('Successfully initialized book assistant in container', container.id || index);
             } catch (error) {
@@ -1049,24 +1076,30 @@ function initBookRecommendationChatbot() {
         });
     };
     
-    // Make sure the global Deep Chat component is loaded before initializing
-    if (typeof DeepChat !== 'undefined' || typeof window.DeepChat !== 'undefined' || customElements.get('deep-chat')) {
+    // Check if Deep Chat is loaded
+    if (customElements.get('deep-chat')) {
         console.log('Deep Chat library detected, initializing...');
         initializeDeepChat();
     } else {
         console.log('Deep Chat library not yet loaded, waiting...');
-        // If not loaded, retry after a short delay
-        setTimeout(() => {
-            console.log('Retrying Deep Chat initialization...');
-            if (typeof DeepChat !== 'undefined' || typeof window.DeepChat !== 'undefined' || customElements.get('deep-chat')) {
+        // Wait for the custom element to be defined
+        window.addEventListener('DOMContentLoaded', () => {
+            if (customElements.get('deep-chat')) {
                 initializeDeepChat();
             } else {
-                console.error('Deep Chat library still not available after delay');
-                containers.forEach(container => {
-                    container.innerHTML = '<div class="alert alert-warning">Chat component is loading. If it doesn\'t appear, please refresh the page.</div>';
-                });
+                // Try again after a delay
+                setTimeout(() => {
+                    if (customElements.get('deep-chat')) {
+                        initializeDeepChat();
+                    } else {
+                        console.error('Deep Chat library still not available');
+                        containers.forEach(container => {
+                            container.innerHTML = '<div class="alert alert-warning">Chat component could not be loaded. Please refresh the page.</div>';
+                        });
+                    }
+                }, 2000);
             }
-        }, 1000);
+        });
     }
 }
 

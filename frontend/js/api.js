@@ -1,5 +1,5 @@
 /**
- * API utilities for BookResell
+ * API utilities for BookBridge
  */
 
 /**

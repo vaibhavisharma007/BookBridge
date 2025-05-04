@@ -1,5 +1,5 @@
 /**
- * Admin dashboard functionality for BookResell
+ * Admin dashboard functionality for BookBridge
  */
 
 /**

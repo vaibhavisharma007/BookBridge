@@ -1,5 +1,5 @@
 /**
- * Cart functionality for BookResell
+ * Cart functionality for BookBridge
  */
 
 // Initialize cart when the page loads
@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeCart();
     loadCartItems();
     updateCartCount();
+    setupEventListeners();
 });
 
 /**
@@ -16,6 +17,92 @@ function initializeCart() {
     if (!localStorage.getItem('cart')) {
         localStorage.setItem('cart', JSON.stringify([]));
     }
+}
+
+/**
+ * Setup event listeners for the cart page
+ */
+function setupEventListeners() {
+    // Apply discount button
+    const applyDiscountBtn = document.getElementById('apply-discount');
+    if (applyDiscountBtn) {
+        applyDiscountBtn.addEventListener('click', applyDiscount);
+    }
+}
+
+/**
+ * Apply a discount code to the cart
+ */
+function applyDiscount() {
+    const discountInput = document.getElementById('discount-code');
+    if (!discountInput || !discountInput.value.trim()) {
+        showToast('Please enter a discount code', 'info');
+        return;
+    }
+
+    const discountCode = discountInput.value.trim().toUpperCase();
+    
+    // Simulate discount codes
+    const validDiscounts = {
+        'WELCOME10': 10,
+        'BOOKS20': 20,
+        'SUMMER30': 30
+    };
+
+    if (validDiscounts[discountCode]) {
+        const discountPercent = validDiscounts[discountCode];
+        showToast(`Discount code applied: ${discountPercent}% off!`, 'success');
+        
+        // Update the cart summary with the discount
+        updateCartSummary(discountPercent);
+        
+        // Add a visual indicator that the discount was applied
+        const discountRow = document.querySelector('.discount-row');
+        if (discountRow) {
+            discountRow.classList.add('discount-applied');
+            discountRow.innerHTML = `
+                <div class="discount-applied-info">
+                    <span>Discount (${discountCode})</span>
+                    <span class="discount-amount">-${discountPercent}%</span>
+                    <button class="remove-discount-btn" onclick="removeDiscount()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+        }
+    } else {
+        showToast('Invalid discount code', 'error');
+        discountInput.classList.add('shake');
+        setTimeout(() => {
+            discountInput.classList.remove('shake');
+        }, 500);
+    }
+}
+
+/**
+ * Remove an applied discount
+ */
+function removeDiscount() {
+    const discountRow = document.querySelector('.discount-row');
+    if (discountRow) {
+        discountRow.classList.remove('discount-applied');
+        discountRow.innerHTML = `
+            <div class="discount-input">
+                <input type="text" id="discount-code" placeholder="Discount code">
+                <button id="apply-discount" class="secondary-button">Apply</button>
+            </div>
+        `;
+        
+        // Re-attach the event listener
+        const applyDiscountBtn = document.getElementById('apply-discount');
+        if (applyDiscountBtn) {
+            applyDiscountBtn.addEventListener('click', applyDiscount);
+        }
+    }
+    
+    // Update the cart summary without a discount
+    updateCartSummary(0);
+    showToast('Discount removed', 'info');
 }
 
 /**
@@ -69,17 +156,26 @@ function addToCart(book) {
         button.classList.add('btn-success-pulse');
         
         // Change icon temporarily
-        const icon = button.querySelector('svg.feather');
+        const icon = button.querySelector('i.fas, i.far, svg.feather');
         if (icon) {
             // Save original icon
             const originalIcon = icon.outerHTML;
             
             // Replace with check icon temporarily
-            icon.outerHTML = feather.icons['check'].toSvg();
+            if (icon.tagName.toLowerCase() === 'svg') {
+                // For feather icons
+                icon.outerHTML = feather.icons['check'].toSvg();
+            } else {
+                // For Font Awesome icons
+                icon.outerHTML = '<i class="fas fa-check"></i>';
+            }
             
             // Restore original icon after animation
             setTimeout(() => {
-                icon.outerHTML = originalIcon;
+                const currentIcon = button.querySelector('i.fas, i.far, svg.feather');
+                if (currentIcon) {
+                    currentIcon.outerHTML = originalIcon;
+                }
                 button.classList.remove('btn-success-pulse');
             }, 1500);
         }
@@ -169,7 +265,7 @@ function updateCartItemQuantity(bookId, newQuantity) {
             
             // Find quantity display elements for animation
             const quantityInput = document.querySelector(`.cart-item[data-book-id="${bookId}"] .quantity-input`);
-            const itemTotalElement = document.querySelector(`.cart-item[data-book-id="${bookId}"] .item-total`);
+            const itemTotalElement = document.querySelector(`.cart-item[data-book-id="${bookId}"] .cart-item-total`);
             
             if (quantityInput && itemTotalElement) {
                 // Flash effect on quantity change
@@ -198,9 +294,11 @@ function updateCartItemQuantity(bookId, newQuantity) {
                     `Decreased quantity of "${item.title}" to ${newQuantity}`;
                 
                 showToast(message, 'info');
+                
+                // Update cart summary
+                updateCartSummary();
             } else {
-                // If element not found in DOM, just update the cart
-                updateCartCount();
+                // If elements not found in DOM, just update the cart
                 loadCartItems();
             }
         }
@@ -208,231 +306,202 @@ function updateCartItemQuantity(bookId, newQuantity) {
 }
 
 /**
- * Update the cart count indicator in the UI
- */
-function updateCartCount() {
-    const cart = JSON.parse(localStorage.getItem('cart')) || [];
-    const cartCountElements = document.querySelectorAll('#cart-count');
-    
-    // Calculate total items (sum of quantities)
-    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-    
-    // Update all cart count indicators
-    cartCountElements.forEach(element => {
-        element.textContent = totalItems;
-        
-        // Show/hide based on count
-        if (totalItems > 0) {
-            element.style.display = 'inline-block';
-        } else {
-            element.style.display = 'none';
-        }
-    });
-}
-
-/**
- * Load and display cart items
+ * Load cart items from local storage and display them
  */
 function loadCartItems() {
     const cart = JSON.parse(localStorage.getItem('cart')) || [];
     const cartItemsContainer = document.getElementById('cart-items');
-    const emptycartMessage = document.getElementById('empty-cart-message');
+    const emptyCartMessage = document.getElementById('empty-cart-message');
     const cartSummary = document.getElementById('cart-summary');
+    const cartContent = document.querySelector('.cart-content');
     
-    // Check if we're on the cart page
-    if (!cartItemsContainer) return;
+    if (!cartItemsContainer || !emptyCartMessage || !cartSummary) {
+        console.error('Required DOM elements not found');
+        return;
+    }
     
-    // Clear the cart items container
+    // Clear existing cart items
     cartItemsContainer.innerHTML = '';
     
     if (cart.length === 0) {
         // Show empty cart message
-        emptycartMessage.style.display = 'block';
+        emptyCartMessage.style.display = 'block';
         cartSummary.style.display = 'none';
+        if (cartContent) cartContent.style.display = 'none';
         return;
     }
     
-    // Hide empty cart message
-    emptycartMessage.style.display = 'none';
+    // Hide empty cart message and show cart content
+    emptyCartMessage.style.display = 'none';
     cartSummary.style.display = 'block';
+    if (cartContent) cartContent.style.display = 'grid';
     
-    // Calculate the total
-    let totalAmount = 0;
-    
-    // Display each cart item
+    // Add cart items to the container
     cart.forEach(item => {
-        const itemTotal = item.price * item.quantity;
-        totalAmount += itemTotal;
-        
         const cartItemElement = document.createElement('div');
         cartItemElement.className = 'cart-item';
         cartItemElement.setAttribute('data-book-id', item.id);
+        
+        const itemTotal = item.price * item.quantity;
+        
         cartItemElement.innerHTML = `
             <div class="cart-item-details">
                 <img src="${item.image}" alt="${item.title}" class="cart-item-image">
                 <div class="cart-item-info">
                     <h3>${item.title}</h3>
                     <p>Author: ${item.author}</p>
-                    <p class="cart-item-price">₹${item.price.toFixed(2)}</p>
                 </div>
             </div>
-            <div class="cart-item-actions">
+            <div class="cart-item-price">₹${parseFloat(item.price).toFixed(2)}</div>
+            <div class="cart-item-quantity">
                 <div class="quantity-control">
                     <button class="quantity-btn" onclick="updateCartItemQuantity(${item.id}, ${item.quantity - 1})">-</button>
-                    <input type="number" value="${item.quantity}" min="1" class="quantity-input" 
-                           onchange="updateCartItemQuantity(${item.id}, this.value)">
+                    <input type="number" min="1" value="${item.quantity}" class="quantity-input" 
+                        onchange="updateCartItemQuantity(${item.id}, this.value)">
                     <button class="quantity-btn" onclick="updateCartItemQuantity(${item.id}, ${item.quantity + 1})">+</button>
                 </div>
-                <span class="item-total">₹${itemTotal.toFixed(2)}</span>
-                <button class="remove-item-btn" onclick="removeFromCart(${item.id})">Remove</button>
+            </div>
+            <div class="cart-item-total">₹${itemTotal.toFixed(2)}</div>
+            <div class="cart-item-action">
+                <button class="remove-item-btn" onclick="removeFromCart(${item.id})">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
             </div>
         `;
         
         cartItemsContainer.appendChild(cartItemElement);
     });
     
-    // Update the total amount
-    const cartTotalElement = document.getElementById('cart-total-amount');
-    if (cartTotalElement) {
-        cartTotalElement.textContent = `₹${totalAmount.toFixed(2)}`;
+    // Update cart summary
+    updateCartSummary();
+}
+
+/**
+ * Update the cart summary with subtotal, shipping, and total
+ * @param {Number} discountPercent - Optional discount percentage
+ */
+function updateCartSummary(discountPercent = 0) {
+    const cart = JSON.parse(localStorage.getItem('cart')) || [];
+    const subtotalElement = document.getElementById('cart-subtotal');
+    const totalElement = document.getElementById('cart-total-amount');
+    
+    if (!subtotalElement || !totalElement) {
+        console.error('Cart summary elements not found');
+        return;
+    }
+    
+    // Calculate subtotal
+    const subtotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+    
+    // Fixed shipping cost
+    const shipping = subtotal > 0 ? 40 : 0;
+    
+    // Calculate discount amount
+    const discountAmount = subtotal * (discountPercent / 100);
+    
+    // Calculate total
+    const total = subtotal + shipping - discountAmount;
+    
+    // Update the UI
+    subtotalElement.textContent = `₹${subtotal.toFixed(2)}`;
+    document.getElementById('cart-shipping').textContent = subtotal > 0 ? `₹${shipping.toFixed(2)}` : 'Free';
+    totalElement.textContent = `₹${total.toFixed(2)}`;
+    
+    // Add discount row if a discount is applied
+    if (discountPercent > 0) {
+        // Check if discount row already exists
+        let discountElement = document.getElementById('cart-discount');
+        if (!discountElement) {
+            // Create discount row
+            const summaryDivider = document.querySelector('.summary-divider');
+            if (summaryDivider) {
+                const discountRow = document.createElement('div');
+                discountRow.className = 'summary-row';
+                discountRow.innerHTML = `
+                    <span>Discount</span>
+                    <span id="cart-discount">-₹${discountAmount.toFixed(2)}</span>
+                `;
+                summaryDivider.before(discountRow);
+            }
+        } else {
+            // Update existing discount row
+            discountElement.textContent = `-₹${discountAmount.toFixed(2)}`;
+        }
+    } else {
+        // Remove discount row if it exists
+        const discountRow = document.querySelector('.summary-row:has(#cart-discount)');
+        if (discountRow) {
+            discountRow.remove();
+        }
     }
 }
 
 /**
- * Show a toast notification with improved styling and animation
- * @param {String} message - Message to display
- * @param {String} type - Type of toast (success, warning, error, info)
+ * Update the cart count in the header
  */
-function showToast(message, type = 'success') {
-    // Check if there's a toast container
-    let toastContainer = document.getElementById('toast-container');
+function updateCartCount() {
+    const cart = JSON.parse(localStorage.getItem('cart')) || [];
+    const cartCount = document.getElementById('cart-count');
     
-    // Create one if it doesn't exist
+    if (cartCount) {
+        const totalItems = cart.reduce((count, item) => count + item.quantity, 0);
+        cartCount.textContent = totalItems;
+        
+        // Show/hide the badge
+        if (totalItems > 0) {
+            cartCount.style.display = 'inline-block';
+        } else {
+            cartCount.style.display = 'none';
+        }
+    }
+}
+
+/**
+ * Show a toast notification
+ * @param {String} message - Message to display
+ * @param {String} type - Type of toast (success, error, info)
+ */
+function showToast(message, type = 'info') {
+    const toastContainer = document.getElementById('toast-container');
+    
     if (!toastContainer) {
-        toastContainer = document.createElement('div');
-        toastContainer.id = 'toast-container';
-        toastContainer.className = 'position-fixed bottom-0 end-0 p-3';
-        toastContainer.style.zIndex = '9999';
-        document.body.appendChild(toastContainer);
+        console.error('Toast container not found');
+        return;
     }
     
     // Create toast element
-    const toastId = `toast-${Date.now()}`;
-    const toastEl = document.createElement('div');
-    toastEl.className = 'toast show';
-    toastEl.id = toastId;
-    toastEl.setAttribute('role', 'alert');
-    toastEl.setAttribute('aria-live', 'assertive');
-    toastEl.setAttribute('aria-atomic', 'true');
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
     
-    // Set appropriate styling based on type
-    let bgColor = 'bg-success text-white';
-    let icon = 'check-circle';
-    
-    if (type === 'error') {
-        bgColor = 'bg-danger text-white';
-        icon = 'alert-circle';
-    } else if (type === 'warning') {
-        bgColor = 'bg-warning';
-        icon = 'alert-triangle';
-    } else if (type === 'info') {
-        bgColor = 'bg-info text-white';
-        icon = 'info';
+    // Set icon based on type
+    let icon = '';
+    switch (type) {
+        case 'success':
+            icon = '<i class="fas fa-check-circle"></i>';
+            break;
+        case 'error':
+            icon = '<i class="fas fa-exclamation-circle"></i>';
+            break;
+        case 'info':
+            icon = '<i class="fas fa-info-circle"></i>';
+            break;
     }
     
-    toastEl.innerHTML = `
-        <div class="toast-header ${bgColor}">
-            <i data-feather="${icon}" class="me-2"></i>
-            <strong class="me-auto">BookResell</strong>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-        <div class="toast-body">
-            ${message}
-        </div>
+    toast.innerHTML = `
+        ${icon}
+        <div class="toast-message">${message}</div>
     `;
     
-    // Add to container with animation
-    toastEl.style.opacity = '0';
-    toastEl.style.transform = 'translateY(20px)';
-    toastEl.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-    toastContainer.appendChild(toastEl);
+    // Add toast to container
+    toastContainer.appendChild(toast);
     
-    // Trigger animation
+    // Remove toast after delay
     setTimeout(() => {
-        toastEl.style.opacity = '1';
-        toastEl.style.transform = 'translateY(0)';
-    }, 10);
-    
-    // Initialize feather icons in the toast
-    if (typeof feather !== 'undefined') {
-        feather.replace();
-    }
-    
-    // Auto-hide after 3 seconds
-    setTimeout(() => {
-        toastEl.style.opacity = '0';
-        toastEl.style.transform = 'translateY(20px)';
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        
         setTimeout(() => {
-            toastEl.remove();
+            toastContainer.removeChild(toast);
         }, 300);
     }, 3000);
-    
-    // Add click listener to close button
-    const closeBtn = toastEl.querySelector('.btn-close');
-    if (closeBtn) {
-        closeBtn.addEventListener('click', () => {
-            toastEl.style.opacity = '0';
-            toastEl.style.transform = 'translateY(20px)';
-            setTimeout(() => {
-                toastEl.remove();
-            }, 300);
-        });
-    }
-}
-
-/**
- * Proceed to checkout with improved feedback
- */
-function proceedToCheckout() {
-    const cart = JSON.parse(localStorage.getItem('cart')) || [];
-    const checkoutBtn = document.getElementById('checkout-btn');
-    
-    if (cart.length === 0) {
-        showToast('Your cart is empty', 'warning');
-        return;
-    }
-    
-    // Show loading state on button if it exists
-    if (checkoutBtn) {
-        const originalText = checkoutBtn.innerHTML;
-        checkoutBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...`;
-        checkoutBtn.disabled = true;
-    }
-    
-    // Calculate cart total
-    const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    
-    // Check if user is authenticated
-    const isAuthenticated = localStorage.getItem('authToken') !== null;
-    
-    if (!isAuthenticated) {
-        // Show toast before redirect
-        showToast('Please login to continue with checkout', 'info');
-        
-        // Short delay before redirect to show the toast
-        setTimeout(() => {
-            // Redirect to login page, with a redirect back to checkout
-            window.location.href = '/login.html?redirect=checkout.html';
-        }, 1000);
-        return;
-    }
-    
-    // Show success toast before redirecting
-    showToast(`Proceeding to checkout with ₹${cartTotal.toFixed(2)}`, 'success');
-    
-    // Short delay before redirect to show the toast
-    setTimeout(() => {
-        // Redirect to checkout page
-        window.location.href = '/checkout.html';
-    }, 800);
 }

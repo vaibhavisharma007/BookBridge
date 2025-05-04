@@ -313,13 +313,16 @@ func GetRecommendedBooks(c *gin.Context) {
         c.JSON(http.StatusOK, recommendations)
 }
 
-// ChatbotResponse handles book search queries via the chatbot
-func ChatbotResponse(c *gin.Context) {
+// BookSearchChatbotResponse handles book search queries via the chatbot
+func BookSearchChatbotResponse(c *gin.Context) {
         var query models.ChatbotQuery
         if err := c.ShouldBindJSON(&query); err != nil {
                 c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
                 return
         }
+
+        // Log the incoming query for debugging
+        log.Printf("Chatbot query received: %s", query.Query)
 
         // Simple keyword-based search for the chatbot
         rows, err := db.DB.Query(`
@@ -357,9 +360,38 @@ func ChatbotResponse(c *gin.Context) {
                 books = append(books, book)
         }
 
-        response := "I found these books that might interest you:"
-        if len(books) == 0 {
-                response = "I couldn't find any books matching your query. Try different keywords or check all available books."
+        // Generate a more helpful and conversational response
+        var response string
+        if len(books) > 0 {
+                response = fmt.Sprintf("I found %d books that match your query for '%s':", len(books), query.Query)
+                
+                // Add book details to the response
+                for i, book := range books {
+                        bookInfo := fmt.Sprintf("\n\n%d. '%s' by %s - ₹%.2f", 
+                                i+1, book.Title, book.Author, book.Price)
+                        
+                        // Add genre if available
+                        if book.Genre != "" {
+                                bookInfo += fmt.Sprintf(" (Genre: %s)", book.Genre)
+                        }
+                        
+                        // Add condition if available
+                        if book.Condition != "" {
+                                bookInfo += fmt.Sprintf(" - %s condition", book.Condition)
+                        }
+                        
+                        response += bookInfo
+                }
+                
+                response += "\n\nYou can click on any book to view more details or ask me about another topic!"
+        } else {
+                // Provide helpful suggestions if no books were found
+                response = fmt.Sprintf("I couldn't find any books matching '%s'. Here are some suggestions:", query.Query)
+                response += "\n\n• Try using more general keywords"
+                response += "\n• Check for spelling errors"
+                response += "\n• Search by genre (e.g., 'fiction', 'mystery', 'science fiction')"
+                response += "\n• Search by popular authors"
+                response += "\n• Or simply ask to see all available books"
         }
 
         c.JSON(http.StatusOK, models.ChatbotResponse{

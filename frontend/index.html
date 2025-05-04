@@ -3,16 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BookResell - Find Your Next Read</title>
+    <title>BookBridge - Find Your Next Read</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
+
 </head>
 <body>
     <header>
         <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
             <div class="container">
-                <a class="navbar-brand" href="index.html">BookResell</a>
+                <a class="navbar-brand" href="index.html">BookBridge</a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                     <span class="navbar-toggler-icon"></span>
                 </button>
@@ -54,6 +56,10 @@
                                 </a>
                             </li>
                         </ul>
+                        <div class="unauthenticated">
+                            <a href="login.html" class="btn btn-light me-2">Login</a>
+                            <a href="register.html" class="btn btn-outline-light">Register</a>
+                        </div>
                         <div class="authenticated" style="display: none">
                             <div class="dropdown">
                                 <button class="btn btn-primary dropdown-toggle" type="button" id="user-menu-btn" data-bs-toggle="dropdown" aria-expanded="false">
@@ -73,10 +79,6 @@
                                 </ul>
                             </div>
                         </div>
-                        <div class="unauthenticated">
-                            <a href="login.html" class="btn btn-light me-2">Login</a>
-                            <a href="register.html" class="btn btn-outline-light">Register</a>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -89,33 +91,10 @@
             <h1>Find Your Next Great Read</h1>
             <p class="lead">Buy and sell pre-loved books at affordable prices</p>
             <div class="cta-buttons">
-                <a href="register.html?role=buyer" class="btn btn-primary btn-lg me-3">Join as Buyer</a>
-                <a href="register.html?role=seller" class="btn btn-outline-primary btn-lg">Become a Seller</a>
+                <a href="register.html?role=buyer" class="btn btn-outline-dark btn-lg me-3">Join as Buyer</a>
+                <a href="register.html?role=seller" class="btn btn-outline-dark btn-lg me-3">Become a Seller</a>
             </div>
         </section>
-
-        <!-- Chatbot Trigger -->
-        <div class="chatbot-trigger">
-            <button class="btn btn-primary rounded-circle" id="chatbot-toggle">
-                <i data-feather="message-circle"></i>
-            </button>
-        </div>
-
-        <!-- Chatbot Modal -->
-        <div class="modal fade" id="chatbotModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">BookResell Assistant</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <!-- Deep Chat component will be inserted here by the JavaScript -->
-                        <div class="book-assistant-container" id="modal-book-assistant"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- Recommendations Section (visible when authenticated) -->
         <section class="recommendations-section mb-4 authenticated" style="display: none">
@@ -203,38 +182,75 @@
         </section>
     </main>
 
+
+
     <footer class="footer mt-auto py-3 bg-light">
         <div class="container text-center">
-            <span class="text-muted">© 2023 BookResell - A marketplace for pre-loved books</span>
+            <span class="text-muted"> 2023 BookBridge - A marketplace for pre-loved books</span>
         </div>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
-    <script src="https://unpkg.com/deep-chat"></script>
     <script src="js/auth.js"></script>
     <script src="js/books.js"></script>
     <script src="js/cart.js"></script>
     <script src="js/chat.js"></script>
+
     
     <script>
         // Initialize Feather icons
         document.addEventListener('DOMContentLoaded', function() {
             feather.replace();
-            
-            // Setup chatbot toggle
-            const chatbotToggle = document.getElementById('chatbot-toggle');
-            const chatbotModal = new bootstrap.Modal(document.getElementById('chatbotModal'));
-            
-            chatbotToggle.addEventListener('click', function() {
-                chatbotModal.show();
-            });
-            
-            // When modal is shown, initialize the Deep Chat component if needed
-            document.getElementById('chatbotModal').addEventListener('shown.bs.modal', function() {
-                // We're using the function from chat.js for consistency
-                initBookRecommendationChatbot();
-            });
+        });
+    </script>
+    
+    <!-- Chatbase Chatbot Integration - Simple Version -->
+    <script>
+        // Initialize Chatbase with website information
+        (function(){if(!window.chatbase||window.chatbase("getState")!=="initialized"){window.chatbase=(...arguments)=>{if(!window.chatbase.q){window.chatbase.q=[]}window.chatbase.q.push(arguments)};window.chatbase=new Proxy(window.chatbase,{get(target,prop){if(prop==="q"){return target.q}return(...args)=>target(prop,...args)}})}const onLoad=function(){const script=document.createElement("script");script.src="https://www.chatbase.co/embed.min.js";script.id="oCM1OJWX2QEc44OKYvnKW";script.domain="www.chatbase.co";document.body.appendChild(script)};if(document.readyState==="complete"){onLoad()}else{window.addEventListener("load",onLoad)}})();
+        
+        // Configure Chatbase with website information after it loads
+        window.addEventListener('load', function() {
+            // Wait for Chatbase to initialize
+            const checkChatbase = setInterval(function() {
+                if (typeof window.chatbase === 'function') {
+                    clearInterval(checkChatbase);
+                    
+                    // Set the chatbot name to BookBridge
+                    window.chatbase('updateChatbotConfig', {
+                        chatbotName: 'BookBridge'
+                    });
+                    
+                    // Add website information to help the chatbot
+                    window.chatbase('setMetadata', {
+                        websiteName: 'BookBridge',
+                        websiteDescription: 'A marketplace for pre-loved books where users can buy and sell used books',
+                        websiteUrl: window.location.origin,
+                        // Add information about book categories available
+                        bookCategories: [
+                            'Fiction', 'Mystery', 'Science Fiction', 'Fantasy', 'Biography',
+                            'History', 'Romance', 'Thriller', 'Self-help', 'Mathematics',
+                            'Physics', 'Chemistry', 'Biology', 'English Literature',
+                            'Computer Science', 'Geography', 'Economics', 'Psychology',
+                            'Sociology', 'Philosophy', 'Engineering', 'Medicine', 'Law',
+                            'Business'
+                        ].join(', ')
+                    });
+                    
+                    // Add user information if available
+                    const userData = getUserData();
+                    if (userData) {
+                        window.chatbase('setUser', {
+                            userId: userData.id || '',
+                            email: userData.email || '',
+                            name: userData.name || userData.username || ''
+                        });
+                    }
+                    
+                    console.log('Chatbase initialized with website information');
+                }
+            }, 500);
         });
     </script>
 </body>

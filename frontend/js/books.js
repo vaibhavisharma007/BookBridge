@@ -1,5 +1,5 @@
 /**
- * Book-related functions for BookResell
+ * Book-related functions for BookBridge
  */
 
 /**
@@ -137,7 +137,10 @@ function loadRecommendedBooks() {
             return;
         }
         
-        validBooks.forEach(book => {
+        // Limit to only 4 books for recommendations
+        const booksToShow = validBooks.slice(0, 4);
+        
+        booksToShow.forEach(book => {
             const bookCard = createBookCard(book);
             container.appendChild(bookCard);
         });

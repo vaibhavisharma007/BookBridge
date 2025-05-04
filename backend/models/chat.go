@@ -35,25 +35,27 @@ type ChatMessage struct {
 
 // ChatSession represents the full chat session with book and user details
 type ChatSession struct {
-	ChatID      int           `json:"chat_id"`
-	BookID      int           `json:"book_id"`
-	BookTitle   string        `json:"book_title"`
-	BuyerID     int           `json:"buyer_id"`
-	BuyerName   string        `json:"buyer_name"`
-	SellerID    int           `json:"seller_id"`
-	SellerName  string        `json:"seller_name"`
-	Messages    []ChatMessage `json:"messages"`
-	CreatedAt   time.Time     `json:"created_at"`
+	ChatID     int           `json:"chat_id"`
+	BookID     int           `json:"book_id"`
+	BookTitle  string        `json:"book_title"`
+	BuyerID    int           `json:"buyer_id"`
+	BuyerName  string        `json:"buyer_name"`
+	SellerID   int           `json:"seller_id"`
+	SellerName string        `json:"seller_name"`
+	Messages   []ChatMessage `json:"messages"`
+	CreatedAt  time.Time     `json:"created_at"`
 }
 
 // WebSocketMessage represents the structure used for websocket communication
 type WebSocketMessage struct {
-	Type      string      `json:"type"` // "message", "system", "error"
-	Content   string      `json:"content"`
-	SenderID  int         `json:"sender_id,omitempty"`
-	ChatID    int         `json:"chat_id,omitempty"`
-	Timestamp time.Time   `json:"timestamp"`
-	Data      interface{} `json:"data,omitempty"`
+	ID         int         `json:"id,omitempty"`
+	Type       string      `json:"type"` // "message", "system", "error"
+	Content    string      `json:"content"`
+	SenderID   int         `json:"sender_id,omitempty"`
+	SenderName string      `json:"sender_name,omitempty"`
+	ChatID     int         `json:"chat_id,omitempty"`
+	Timestamp  time.Time   `json:"timestamp"`
+	Data       interface{} `json:"data,omitempty"`
 }
 
 // ChatbotQuery represents a query sent to the chatbot

@@ -1,474 +1,301 @@
 /**
- * Checkout functionality for BookResell
+ * Simplified Checkout functionality for BookBridge
  */
 
-// Initialize the stripe elements
-let stripe;
-let elements;
-let paymentElement;
-let cardElement;
-let form;
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Checkout page loaded');
+    
+    // Initialize checkout
+    loadCheckoutSummary();
+    
+    // Set up event listeners
+    const applyPromoBtn = document.getElementById('apply-promo');
+    if (applyPromoBtn) {
+        applyPromoBtn.addEventListener('click', applyPromoCode);
+    }
+    
+    // Add direct button click handler for form submission
+    const checkoutForm = document.getElementById('checkout-form');
+    if (checkoutForm) {
+        checkoutForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            console.log('Order form submitted');
+            handleOrderSubmit(event);
+        });
+    }
+});
 
 /**
  * Load checkout summary with cart items
  */
-async function loadCheckoutSummary() {
+function loadCheckoutSummary() {
+    console.log('Loading checkout summary');
     const cartContainer = document.getElementById('cart-summary');
-    const totalAmountElement = document.getElementById('total-amount');
     const cart = JSON.parse(localStorage.getItem('cart')) || [];
+    
+    if (!cartContainer) {
+        console.error('Cart summary container not found');
+        return;
+    }
     
     if (cart.length === 0) {
         cartContainer.innerHTML = '<p>Your cart is empty. <a href="index.html">Continue shopping</a></p>';
-        document.getElementById('checkout-form').style.display = 'none';
-        document.getElementById('payment-container').style.display = 'none';
+        
+        const checkoutForm = document.getElementById('checkout-form');
+        if (checkoutForm) checkoutForm.style.display = 'none';
+        
         return;
     }
     
-    let totalAmount = 0;
+    let subtotal = 0;
+    const shipping = 40; // Fixed shipping cost
     cartContainer.innerHTML = '';
     
+    // Create summary table
+    const summaryTable = document.createElement('div');
+    summaryTable.className = 'summary-table';
+    
+    // Add header
+    const headerRow = document.createElement('div');
+    headerRow.className = 'summary-header-row';
+    headerRow.innerHTML = `
+        <div class="summary-col-wide">Item</div>
+        <div class="summary-col">Price</div>
+        <div class="summary-col">Qty</div>
+        <div class="summary-col">Total</div>
+    `;
+    summaryTable.appendChild(headerRow);
+    
+    // Add items
     cart.forEach(item => {
         const itemTotal = item.price * item.quantity;
-        totalAmount += itemTotal;
+        subtotal += itemTotal;
         
-        const itemElement = document.createElement('div');
-        itemElement.className = 'cart-item';
-        itemElement.innerHTML = `
-            <div class="item-details">
-                <h4>${item.title}</h4>
-                <p>Author: ${item.author}</p>
-                <p>Price: ₹${item.price.toFixed(2)}</p>
-                <p>Quantity: ${item.quantity}</p>
+        const itemRow = document.createElement('div');
+        itemRow.className = 'summary-row-item';
+        itemRow.innerHTML = `
+            <div class="summary-col-wide">
+                <div class="item-info">
+                    <div class="item-title">${item.title}</div>
+                    <div class="item-author">by ${item.author}</div>
+                </div>
             </div>
-            <div class="item-total">
-                <p>₹${itemTotal.toFixed(2)}</p>
-            </div>
+            <div class="summary-col">₹${parseFloat(item.price).toFixed(2)}</div>
+            <div class="summary-col">${item.quantity}</div>
+            <div class="summary-col">₹${itemTotal.toFixed(2)}</div>
         `;
-        
-        cartContainer.appendChild(itemElement);
+        summaryTable.appendChild(itemRow);
     });
     
-    // Add total row
-    const totalRow = document.createElement('div');
-    totalRow.className = 'cart-total';
-    totalRow.innerHTML = `
-        <h3>Total:</h3>
-        <h3>₹${totalAmount.toFixed(2)}</h3>
+    cartContainer.appendChild(summaryTable);
+    
+    // Add summary details
+    const summaryDetails = document.createElement('div');
+    summaryDetails.className = 'summary-details';
+    
+    // Calculate total
+    const total = subtotal + shipping;
+    
+    summaryDetails.innerHTML = `
+        <div class="summary-line">
+            <span>Subtotal:</span>
+            <span>₹${subtotal.toFixed(2)}</span>
+        </div>
+        <div class="summary-line">
+            <span>Shipping:</span>
+            <span>₹${shipping.toFixed(2)}</span>
+        </div>
+        <div class="summary-line total">
+            <span>Total:</span>
+            <span>₹${total.toFixed(2)}</span>
+        </div>
     `;
     
-    cartContainer.appendChild(totalRow);
-    totalAmountElement.innerText = `₹${totalAmount.toFixed(2)}`;
-    
-    // Store the total amount in a data attribute for the payment form
-    document.getElementById('checkout-form').dataset.amount = totalAmount;
-    
-    // Initialize Stripe payment
-    await initializeStripe(totalAmount, cart);
+    cartContainer.appendChild(summaryDetails);
 }
 
 /**
- * Load user shipping information
- */
-function loadShippingInfo() {
-    const user = JSON.parse(localStorage.getItem('userData'));
-    
-    if (user) {
-        document.getElementById('name').value = user.name || '';
-        document.getElementById('email').value = user.email || '';
-        
-        // If the user has saved addresses, populate the form
-        if (user.addresses && user.addresses.length > 0) {
-            const defaultAddress = user.addresses[0]; // Use the first address as default
-            document.getElementById('address').value = defaultAddress.street || '';
-            document.getElementById('city').value = defaultAddress.city || '';
-            document.getElementById('state').value = defaultAddress.state || '';
-            document.getElementById('postal-code').value = defaultAddress.postalCode || '';
-            
-            // Set country if it exists
-            const countrySelect = document.getElementById('country');
-            if (countrySelect && defaultAddress.country) {
-                for (let i = 0; i < countrySelect.options.length; i++) {
-                    if (countrySelect.options[i].value === defaultAddress.country) {
-                        countrySelect.selectedIndex = i;
-                        break;
-                    }
-                }
-            }
-        }
-        
-        // Set phone number if available
-        if (user.phone) {
-            document.getElementById('phone').value = user.phone;
-        }
-    }
-}
-
-/**
- * Initialize Stripe and create payment intent
- */
-async function initializeStripe(amount, cartItems) {
-    try {
-        // Use our API to create a payment intent
-        const { id, client_secret } = await createPaymentIntent(amount, cartItems);
-        
-        // Store the payment intent ID for later reference
-        document.getElementById('checkout-form').dataset.paymentIntentId = id;
-        
-        // Initialize Stripe with our public key
-        const stripePublicKey = "pk_test_51RKIsYHjfMD40GRvGDRD5fUXTquuT9fxhjSBEVWGbjwUwvfYBqp8RJukBCJbNyjTYbvTfY3nNZeyrYu2YuJlZoct00Rq1Nvclt";
-        stripe = Stripe(stripePublicKey);
-        
-        // Create an elements instance
-        elements = stripe.elements({
-            clientSecret: client_secret,
-        });
-        
-        // Create and mount the Payment Element
-        const paymentElementOptions = {
-            layout: {
-                type: 'tabs',
-                defaultCollapsed: false,
-            },
-        };
-        
-        paymentElement = elements.create('payment', paymentElementOptions);
-        paymentElement.mount('#payment-element');
-        
-        // Show the payment section
-        document.getElementById('payment-container').style.display = 'block';
-        
-        // Setup form submission
-        form = document.getElementById('checkout-form');
-        form.addEventListener('submit', handlePaymentSubmission);
-        
-    } catch (error) {
-        console.error('Stripe initialization error:', error);
-        const paymentContainer = document.getElementById('payment-container');
-        paymentContainer.innerHTML = `<div class="error-message">Error initializing payment system: ${error.message}. Please try again later.</div>`;
-    }
-}
-
-/**
- * Handle payment form submission
+ * Handle order form submission
  * @param {Event} event - Form submission event
  */
-async function handlePaymentSubmission(event) {
+function handleOrderSubmit(event) {
+    console.log('Handling order submission');
     event.preventDefault();
     
-    // Validate the form
-    const name = document.getElementById('name').value.trim();
-    const email = document.getElementById('email').value.trim();
-    const phone = document.getElementById('phone').value.trim();
-    const address = document.getElementById('address').value.trim();
-    const city = document.getElementById('city').value.trim();
-    const state = document.getElementById('state').value.trim();
-    const postalCode = document.getElementById('postal-code').value.trim();
-    const country = document.getElementById('country').value;
+    // Show loading state
+    const submitButton = document.getElementById('place-order-button');
+    const originalButtonText = submitButton.innerHTML;
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
     
-    if (!name || !email || !address || !city || !state || !postalCode || !country) {
-        showMessage('Please fill in all required fields', 'error');
+    // Get form data
+    const form = event.target;
+    const formData = new FormData(form);
+    const orderData = {
+        name: formData.get('name'),
+        email: formData.get('email'),
+        phone: formData.get('phone'),
+        address: formData.get('address'),
+        city: formData.get('city'),
+        state: formData.get('state'),
+        postalCode: formData.get('postal-code'),
+        country: formData.get('country')
+    };
+    
+    console.log('Order data:', orderData);
+    
+    // Get cart items
+    const cart = JSON.parse(localStorage.getItem('cart')) || [];
+    if (cart.length === 0) {
+        showMessage('Your cart is empty. Please add items to your cart before checkout.', 'error');
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalButtonText;
         return;
     }
     
-    // Show loading state
-    setLoading(true);
-    
-    try {
-        // Save the shipping information to user data for future use
-        const userData = JSON.parse(localStorage.getItem('userData')) || {};
+    // For demo purposes, simulate a successful order
+    setTimeout(() => {
+        console.log('Order created successfully');
         
-        // Create or update the addresses array
-        if (!userData.addresses) {
-            userData.addresses = [];
-        }
+        // Show success message
+        document.getElementById('checkout-form').style.display = 'none';
         
-        // Add the current address if it's not already saved
-        const newAddress = {
-            street: address,
-            city: city,
-            state: state,
-            postalCode: postalCode,
-            country: country
-        };
+        // Update order confirmation details
+        document.getElementById('order-number').textContent = `BRS-${Math.floor(Math.random() * 100000)}`;
+        document.getElementById('confirmation-email').textContent = orderData.email;
         
-        // Check if this address already exists
-        const addressExists = userData.addresses.some(addr => 
-            addr.street === address && 
-            addr.city === city && 
-            addr.state === state && 
-            addr.postalCode === postalCode
-        );
+        // Show order confirmation
+        document.getElementById('order-success').style.display = 'block';
         
-        if (!addressExists) {
-            userData.addresses.unshift(newAddress); // Add to the beginning of the array
-            // Keep only the last 3 addresses
-            if (userData.addresses.length > 3) {
-                userData.addresses = userData.addresses.slice(0, 3);
-            }
-        }
-        
-        // Update phone if provided
-        if (phone) {
-            userData.phone = phone;
-        }
-        
-        // Save updated user data
-        localStorage.setItem('userData', JSON.stringify(userData));
-        
-        // Update the confirmation email in the success page
-        document.getElementById('confirmation-email').textContent = email;
-        
-        // Generate a random order number if payment is successful
-        const orderNumber = 'BRS-' + Math.floor(10000 + Math.random() * 90000);
-        document.getElementById('order-number').textContent = orderNumber;
-        
-        // Confirm the payment with Stripe
-        const { error } = await stripe.confirmPayment({
-            elements,
-            confirmParams: {
-                return_url: `${window.location.origin}/payment-success.html`,
-                receipt_email: email,
-                payment_method_data: {
-                    billing_details: {
-                        name: name,
-                        email: email,
-                        phone: phone,
-                        address: {
-                            line1: address,
-                            city: city,
-                            state: state,
-                            postal_code: postalCode,
-                            country: country
-                        }
-                    }
-                }
-            },
-        });
-        
-        // This point is only reached if there's an immediate error when confirming the payment
-        if (error) {
-            showMessage(`Payment error: ${error.message}`, 'error');
-        }
-        
-    } catch (e) {
-        console.error('Payment submission error:', e);
-        showMessage('An unexpected error occurred during payment processing. Please try again.', 'error');
-    }
-    
-    setLoading(false);
-}
-
-/**
- * Set the loading state
- * @param {Boolean} isLoading - Whether the form is in loading state
- */
-function setLoading(isLoading) {
-    const submitButton = document.getElementById('submit-button');
-    
-    if (isLoading) {
-        submitButton.disabled = true;
-        submitButton.innerHTML = `
-            <i class="fas fa-spinner fa-spin"></i>
-            <span>Processing Payment...</span>
-        `;
-    } else {
-        submitButton.disabled = false;
-        submitButton.innerHTML = 'Complete Payment <i class="fas fa-lock"></i>';
-    }
-}
-
-/**
- * Show a message to the user
- * @param {String} messageText - The message to display
- * @param {String} type - The message type (success, error, info)
- */
-function showMessage(messageText, type = 'info') {
-    const messageContainer = document.getElementById('message-container');
-    const message = document.createElement('div');
-    
-    message.classList.add('alert');
-    message.classList.add(`alert-${type}`);
-    
-    // Add appropriate icon based on message type
-    let icon = '';
-    switch(type) {
-        case 'success':
-            icon = '<i class="fas fa-check-circle"></i>';
-            break;
-        case 'error':
-            icon = '<i class="fas fa-exclamation-circle"></i>';
-            break;
-        case 'info':
-        default:
-            icon = '<i class="fas fa-info-circle"></i>';
-    }
-    
-    message.innerHTML = `${icon} <span class="alert-message">${messageText}</span>`;
-    
-    messageContainer.innerHTML = '';
-    messageContainer.appendChild(message);
-    
-    // Auto-hide success and info messages after 5 seconds
-    if (type === 'success' || type === 'info') {
-        setTimeout(() => {
-            if (messageContainer.contains(message)) {
-                message.classList.add('fade-out');
-                setTimeout(() => {
-                    if (messageContainer.contains(message)) {
-                        messageContainer.removeChild(message);
-                    }
-                }, 300);
-            }
-        }, 5000);
-    }
-}
-
-/**
- * Handle payment success when returning from Stripe
- */
-function handlePaymentReturnStatus() {
-    // Get client secret from URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const paymentIntentClientSecret = urlParams.get('payment_intent_client_secret');
-    const redirectStatus = urlParams.get('redirect_status');
-    
-    if (redirectStatus === 'succeeded' && paymentIntentClientSecret) {
-        // Show success message and clear cart
-        showMessage('Payment successful! Thank you for your purchase.', 'success');
+        // Clear cart
         localStorage.removeItem('cart');
         
-        // Update the UI to show success state
-        document.getElementById('checkout-form').style.display = 'none';
-        document.getElementById('payment-success').style.display = 'block';
-        
-        // Set confirmation email from user data
-        const userData = JSON.parse(localStorage.getItem('userData')) || {};
-        if (userData.email) {
-            document.getElementById('confirmation-email').textContent = userData.email;
+        // Update cart count
+        if (typeof updateCartCount === 'function') {
+            updateCartCount();
         }
-        
-        // Generate a random order number 
-        const orderNumber = 'BRS-' + Math.floor(10000 + Math.random() * 90000);
-        document.getElementById('order-number').textContent = orderNumber;
-        
-        // Activate the third step in the checkout process
-        const steps = document.querySelectorAll('.checkout-steps .step');
-        if (steps.length >= 3) {
-            steps[2].classList.add('active');
-        }
-        
-        // Record payment success on the server
-        const paymentIntentId = urlParams.get('payment_intent');
-        if (paymentIntentId) {
-            recordSuccessfulPayment(paymentIntentId)
-                .then(() => {
-                    console.log('Payment recorded successfully');
-                })
-                .catch(error => {
-                    console.error('Error recording payment:', error);
-                });
-        }
-    } else if (redirectStatus === 'failed') {
-        showMessage('Payment failed. Please try again.', 'error');
-    }
+    }, 2000);
 }
 
 /**
  * Apply a promo code to the order
  */
 function applyPromoCode() {
-    const promoCodeInput = document.getElementById('promo-code');
-    const promoCode = promoCodeInput.value.trim().toUpperCase();
+    console.log('Applying promo code');
     
+    const promoInput = document.getElementById('promo-code');
+    if (!promoInput) {
+        console.error('Promo code input not found');
+        return;
+    }
+    
+    const promoCode = promoInput.value.trim();
     if (!promoCode) {
         showMessage('Please enter a promo code', 'error');
         return;
     }
     
-    // List of valid promo codes with their discount percentages
+    // Valid promo codes (in a real app, this would be checked against a database)
     const validPromoCodes = {
         'WELCOME10': 10,
-        'BOOKS25': 25,
-        'STUDENT15': 15,
-        'FESTIVAL20': 20
+        'BOOKS20': 20,
+        'SUMMER15': 15
     };
     
+    // Check if promo code is valid
     if (validPromoCodes[promoCode]) {
-        // Get the discount percentage
-        const discountPercentage = validPromoCodes[promoCode];
+        const discount = validPromoCodes[promoCode];
+        showMessage(`Promo code applied! ${discount}% discount`, 'success');
         
-        // Get the current total amount
-        const amount = parseFloat(document.getElementById('checkout-form').dataset.amount);
-        
-        // Calculate the discounted amount
-        const discountAmount = (amount * discountPercentage / 100);
-        const discountedTotal = amount - discountAmount;
-        
-        // Update the total amount in the UI
-        const totalAmountElement = document.getElementById('total-amount');
-        totalAmountElement.innerHTML = `<span class="original-price">₹${amount.toFixed(2)}</span> <span class="discounted-price">₹${discountedTotal.toFixed(2)}</span> <span class="discount-badge">-${discountPercentage}%</span>`;
-        
-        // Update the data attribute with the new amount
-        document.getElementById('checkout-form').dataset.amount = discountedTotal;
-        
-        // Update the cart total
-        const cartTotalElement = document.querySelector('.cart-total h3:last-child');
-        if (cartTotalElement) {
-            cartTotalElement.innerHTML = `<span class="original-price">₹${amount.toFixed(2)}</span> <span class="discounted-price">₹${discountedTotal.toFixed(2)}</span>`;
+        // Apply discount to summary
+        const summaryDetails = document.querySelector('.summary-details');
+        if (summaryDetails) {
+            // Calculate discount amount
+            const subtotal = parseFloat(summaryDetails.querySelector('.summary-line:first-child span:last-child').textContent.replace('₹', ''));
+            const discountAmount = subtotal * (discount / 100);
+            
+            // Check if discount line already exists
+            let discountLine = summaryDetails.querySelector('.discount-line');
+            
+            if (!discountLine) {
+                // Create discount line
+                discountLine = document.createElement('div');
+                discountLine.className = 'summary-line discount-line';
+                discountLine.innerHTML = `
+                    <span>Discount (${promoCode}):</span>
+                    <span>-₹${discountAmount.toFixed(2)}</span>
+                `;
+                
+                // Insert before total
+                const totalLine = summaryDetails.querySelector('.total');
+                if (totalLine) {
+                    summaryDetails.insertBefore(discountLine, totalLine);
+                } else {
+                    summaryDetails.appendChild(discountLine);
+                }
+            } else {
+                // Update existing discount line
+                discountLine.innerHTML = `
+                    <span>Discount (${promoCode}):</span>
+                    <span>-₹${discountAmount.toFixed(2)}</span>
+                `;
+            }
+            
+            // Update total
+            const totalLine = summaryDetails.querySelector('.total');
+            if (totalLine) {
+                const subtotal = parseFloat(summaryDetails.querySelector('.summary-line:first-child span:last-child').textContent.replace('₹', ''));
+                const shipping = parseFloat(summaryDetails.querySelector('.summary-line:nth-child(2) span:last-child').textContent.replace('₹', ''));
+                const newTotal = subtotal + shipping - discountAmount;
+                
+                totalLine.querySelector('span:last-child').textContent = `₹${newTotal.toFixed(2)}`;
+            }
         }
         
-        showMessage(`Promo code ${promoCode} applied! You saved ₹${discountAmount.toFixed(2)}`, 'success');
-        
-        // Disable the promo code input and button
-        promoCodeInput.disabled = true;
+        // Disable promo input and button
+        promoInput.disabled = true;
         document.getElementById('apply-promo').disabled = true;
-        document.getElementById('apply-promo').textContent = 'Applied';
-        document.getElementById('apply-promo').classList.add('applied');
-        
-        // Add the promo info to the form for server processing
-        document.getElementById('checkout-form').dataset.promoCode = promoCode;
-        document.getElementById('checkout-form').dataset.discountPercentage = discountPercentage;
-        
-        // Reinitialize Stripe with the new amount
-        initializeStripe(discountedTotal, JSON.parse(localStorage.getItem('cart')) || []);
-        
     } else {
-        showMessage('Invalid promo code. Please try again.', 'error');
+        showMessage('Invalid promo code', 'error');
+        promoInput.classList.add('shake');
+        setTimeout(() => {
+            promoInput.classList.remove('shake');
+        }, 500);
     }
 }
 
-// Initialize the page
-document.addEventListener('DOMContentLoaded', async () => {
-    // Check if user is authenticated
-    const isAuthenticated = localStorage.getItem('authToken') !== null;
+/**
+ * Show a message to the user
+ * @param {String} message - Message to display
+ * @param {String} type - Message type (success, error, info)
+ */
+function showMessage(message, type = 'info') {
+    console.log(`Showing message: ${message} (${type})`);
     
-    if (!isAuthenticated) {
-        // Redirect to login page if not authenticated
-        window.location.href = 'login.html?redirect=checkout.html';
+    const messageContainer = document.getElementById('message-container');
+    if (!messageContainer) {
+        console.error('Message container not found');
         return;
     }
     
-    // Handle return from Stripe redirect
-    handlePaymentReturnStatus();
+    const messageElement = document.createElement('div');
+    messageElement.className = `alert alert-${type === 'error' ? 'danger' : type}`;
+    messageElement.innerHTML = message;
     
-    // Load checkout page
-    await loadCheckoutSummary();
-    loadShippingInfo();
+    // Clear existing messages
+    messageContainer.innerHTML = '';
+    messageContainer.appendChild(messageElement);
     
-    // Add event listener for promo code button
-    const applyPromoButton = document.getElementById('apply-promo');
-    if (applyPromoButton) {
-        applyPromoButton.addEventListener('click', applyPromoCode);
-    }
+    // Scroll to message
+    messageContainer.scrollIntoView({ behavior: 'smooth' });
     
-    // Add event listener for promo code input (apply on Enter key)
-    const promoCodeInput = document.getElementById('promo-code');
-    if (promoCodeInput) {
-        promoCodeInput.addEventListener('keypress', (event) => {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                applyPromoCode();
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        messageElement.style.opacity = '0';
+        setTimeout(() => {
+            if (messageContainer.contains(messageElement)) {
+                messageContainer.removeChild(messageElement);
             }
-        });
-    }
-});
+        }, 500);
+    }, 5000);
+}

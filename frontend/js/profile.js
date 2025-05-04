@@ -1,5 +1,5 @@
 /**
- * Profile functionality for BookResell
+ * Profile functionality for BookBridge
  */
 
 // Initialize the profile page

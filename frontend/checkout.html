@@ -3,25 +3,493 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checkout - BookResell</title>
-    <link rel="stylesheet" href="/css/styles.css">
-    <link rel="stylesheet" href="/css/checkout.css">
+    <title>Checkout - BookBridge</title>
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://js.stripe.com/v3/"></script>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/checkout.css">
+    
+    <!-- Inline CSS improvements -->
+    <style>
+        /* Improved navbar styling */
+        header {
+            background-color: #fff;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .logo a {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4CAF50;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .logo a:hover {
+            color: #388E3C;
+        }
+        
+        .nav-links {
+            display: flex;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            align-items: center;
+        }
+        
+        .nav-links li {
+            margin-left: 25px;
+        }
+        
+        .nav-links a {
+            color: #333;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+            display: flex;
+            align-items: center;
+        }
+        
+        .nav-links a:hover {
+            color: #4CAF50;
+        }
+        
+        .nav-links a.active {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        
+        .cart-badge {
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+        
+        /* Improved checkout styling */
+        .checkout-section {
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            margin-top: 30px;
+            margin-bottom: 50px;
+        }
+        
+        .checkout-header {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .checkout-header h1 {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-size: 32px;
+            color: #333;
+        }
+        
+        .checkout-steps {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+        }
+        
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            margin: 0 30px;
+        }
+        
+        .step-number {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            color: #666;
+            margin-bottom: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .step.active .step-number {
+            background-color: #4CAF50;
+            color: white;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        }
+        
+        .step::before {
+            content: '';
+            position: absolute;
+            height: 4px;
+            width: 100px;
+            background-color: #e0e0e0;
+            top: 20px;
+            left: -65px;
+            z-index: -1;
+        }
+        
+        .step:first-child::before {
+            display: none;
+        }
+        
+        .step.active::before {
+            background-color: #4CAF50;
+        }
+        
+        .checkout-container {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+        
+        .cart-summary-container {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 20px;
+            height: fit-content;
+        }
+        
+        .summary-header {
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .summary-header h2 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 20px;
+            color: #333;
+        }
+        
+        .cart-summary {
+            margin-bottom: 20px;
+        }
+        
+        .summary-item {
+            display: flex;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .summary-item-image {
+            width: 60px;
+            height: 90px;
+            object-fit: cover;
+            margin-right: 15px;
+            border-radius: 4px;
+        }
+        
+        .summary-item-details {
+            flex-grow: 1;
+        }
+        
+        .summary-item-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .summary-item-price {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        
+        .summary-totals {
+            margin-top: 20px;
+        }
+        
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .summary-total {
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 2px solid #eee;
+        }
+        
+        .promo-code {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f0f7ff;
+            border-radius: 8px;
+        }
+        
+        .promo-header {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .promo-input {
+            display: flex;
+        }
+        
+        .promo-input input {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px 0 0 4px;
+            outline: none;
+        }
+        
+        .promo-button {
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
+        }
+        
+        .checkout-guarantee {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        
+        .guarantee-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .guarantee-item i {
+            font-size: 24px;
+            color: #4CAF50;
+            margin-bottom: 8px;
+        }
+        
+        .payment-form-container {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        .form-section {
+            margin-bottom: 30px;
+        }
+        
+        .section-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .section-header i {
+            font-size: 24px;
+            color: #4CAF50;
+            margin-right: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #4CAF50;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .payment-options {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .payment-option {
+            flex: 1;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .payment-option:hover {
+            border-color: #4CAF50;
+        }
+        
+        .payment-option.active {
+            border-color: #4CAF50;
+            background-color: rgba(76, 175, 80, 0.1);
+        }
+        
+        .payment-option i {
+            font-size: 24px;
+            margin-bottom: 8px;
+            color: #555;
+        }
+        
+        .payment-option.active i {
+            color: #4CAF50;
+        }
+        
+        .card-icons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .card-icon {
+            font-size: 24px;
+            color: #888;
+        }
+        
+        .form-actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+        }
+        
+        .back-to-cart {
+            display: flex;
+            align-items: center;
+            color: #555;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        
+        .back-to-cart i {
+            margin-right: 8px;
+        }
+        
+        .place-order-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .place-order-btn:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        #order-success {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        .success-icon {
+            font-size: 80px;
+            color: #4CAF50;
+            margin-bottom: 20px;
+        }
+        
+        #order-success h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        #order-success p {
+            margin-bottom: 30px;
+            color: #666;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .order-details {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: left;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .order-number {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+    </style>
 </head>
 <body>
     <header>
         <nav>
             <div class="logo">
-                <a href="/">BookResell</a>
+                <a href="index.html">BookBridge</a>
             </div>
             <ul class="nav-links">
-                <li><a href="/">Home</a></li>
-                <li class="auth-required seller-only"><a href="/seller-dashboard.html">Seller Dashboard</a></li>
-                <li class="auth-required"><a href="/chat.html">Messages</a></li>
-                <li class="auth-required"><a href="/cart.html">Cart <span id="cart-count" class="cart-badge">0</span></a></li>
-                <li class="auth-not-required"><a href="/login.html">Login</a></li>
-                <li class="auth-not-required"><a href="/register.html">Register</a></li>
+                <li><a href="index.html">Home</a></li>
+                <li class="auth-required seller-only"><a href="seller-dashboard.html">Seller Dashboard</a></li>
+                <li class="auth-required"><a href="chat.html">Messages</a></li>
+                <li class="auth-required"><a href="cart.html">Cart <span id="cart-count" class="cart-badge">0</span></a></li>
+                <li class="auth-not-required"><a href="login.html">Login</a></li>
+                <li class="auth-not-required"><a href="register.html">Register</a></li>
                 <li class="auth-required"><a href="#" id="logout-btn">Logout</a></li>
             </ul>
         </nav>
@@ -30,7 +498,7 @@
     <main class="container">
         <section class="checkout-section">
             <div class="checkout-header">
-                <h1><i class="fas fa-shopping-bag"></i> Secure Checkout</h1>
+                <h1><i class="fas fa-shopping-bag"></i> Checkout</h1>
                 <div class="checkout-steps">
                     <div class="step active">
                         <div class="step-number">1</div>
@@ -89,12 +557,10 @@
                                 <label for="name">Full Name</label>
                                 <input type="text" id="name" name="name" placeholder="Your full name" required>
                             </div>
-
                             <div class="form-group">
                                 <label for="email">Email Address</label>
                                 <input type="email" id="email" name="email" placeholder="Your email address" required>
                             </div>
-
                             <div class="form-group">
                                 <label for="phone">Phone Number</label>
                                 <input type="tel" id="phone" name="phone" placeholder="Your phone number">
@@ -110,7 +576,6 @@
                                 <label for="address">Street Address</label>
                                 <input type="text" id="address" name="address" placeholder="Your street address" required>
                             </div>
-
                             <div class="form-row">
                                 <div class="form-group">
                                     <label for="city">City</label>
@@ -121,7 +586,6 @@
                                     <input type="text" id="state" name="state" placeholder="Your state" required>
                                 </div>
                             </div>
-
                             <div class="form-row">
                                 <div class="form-group">
                                     <label for="postal-code">Postal Code</label>
@@ -130,7 +594,8 @@
                                 <div class="form-group">
                                     <label for="country">Country</label>
                                     <select id="country" name="country" required>
-                                        <option value="India">India</option>
+                                        <option value="">Select Country</option>
+                                        <option value="India" selected>India</option>
                                         <option value="United States">United States</option>
                                         <option value="United Kingdom">United Kingdom</option>
                                         <option value="Canada">Canada</option>
@@ -140,41 +605,29 @@
                             </div>
                         </div>
 
-                        <div id="payment-container" style="display: none;" class="form-section">
-                            <div class="section-header">
-                                <i class="fas fa-credit-card"></i>
-                                <h2>Payment Information</h2>
-                            </div>
-                            <div class="payment-amount">
-                                <p>Total amount: <span id="total-amount"></span></p>
-                            </div>
-                            
-                            <div id="payment-element" class="payment-card"></div>
-                            
-                            <div class="payment-actions">
-                                <a href="/cart.html" class="secondary-button">
-                                    <i class="fas fa-arrow-left"></i> Back to Cart
-                                </a>
-                                <button id="submit-button" type="submit" class="primary-button">
-                                    Complete Payment <i class="fas fa-lock"></i>
-                                </button>
-                            </div>
+                        <div class="form-actions">
+                            <a href="cart.html" class="secondary-button">
+                                <i class="fas fa-arrow-left"></i> Back to Cart
+                            </a>
+                            <button id="place-order-button" type="submit" class="primary-button">
+                                Place Order <i class="fas fa-check"></i>
+                            </button>
                         </div>
                     </form>
 
-                    <div id="payment-success" style="display: none;">
+                    <div id="order-success" style="display: none;">
                         <div class="success-icon">
                             <i class="fas fa-check-circle"></i>
                         </div>
-                        <h2>Thank you for your purchase!</h2>
-                        <p>Your payment has been processed successfully.</p>
+                        <h2>Thank you for your order!</h2>
+                        <p>Your order has been placed successfully.</p>
                         <p>Order #<span id="order-number">BRS-25840</span></p>
                         <p>You will receive an email confirmation shortly at <span id="confirmation-email"></span></p>
                         <div class="success-actions">
-                            <a href="/" class="primary-button">
+                            <a href="index.html" class="primary-button">
                                 <i class="fas fa-home"></i> Return to Home
                             </a>
-                            <a href="/#books-container" class="secondary-button">
+                            <a href="index.html#books-container" class="secondary-button">
                                 <i class="fas fa-book"></i> Continue Shopping
                             </a>
                         </div>
@@ -188,15 +641,15 @@
         <div class="container">
             <div class="footer-content">
                 <div class="footer-section">
-                    <h3>BookResell</h3>
+                    <h3>BookBridge</h3>
                     <p>Connect book lovers through intelligent, technology-driven marketplace solutions.</p>
                 </div>
                 <div class="footer-section">
                     <h3>Quick Links</h3>
                     <ul>
-                        <li><a href="/">Home</a></li>
-                        <li><a href="/seller-dashboard.html">Sell Books</a></li>
-                        <li><a href="/cart.html">Your Cart</a></li>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="seller-dashboard.html">Sell Books</a></li>
+                        <li><a href="cart.html">Your Cart</a></li>
                     </ul>
                 </div>
                 <div class="footer-section">
@@ -210,14 +663,14 @@
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2025 BookResell - All rights reserved</p>
+                <p>&copy; 2025 BookBridge - All rights reserved</p>
             </div>
         </div>
     </footer>
 
-    <script src="/js/auth.js"></script>
-    <script src="/js/api.js"></script>
-    <script src="/js/cart.js"></script>
-    <script src="/js/checkout.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/cart.js"></script>
+    <script src="js/checkout.js"></script>
 </body>
 </html>
