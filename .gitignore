@@ -1,0 +1,23 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual environments
+venv/
+ml/venv/
+
+# Node packages
+node_modules/
+
+# Environment variables
+.env
+
+# VSCode
+.vscode/
+
+# System
+.DS_Store
+*.log
+
+# PowerShell scripts
+*.ps1
